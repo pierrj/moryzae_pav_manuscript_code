@@ -1,0 +1,64 @@
+---
+title: "deletion_lengths"
+output: html_document
+date: '2022-11-10'
+---
+
+```{r}
+library(data.table)
+library(ggplot2)
+```
+
+```{r}
+
+df_rice <- data.frame(fread('../../pav_newest_gladieux_only_fungap/sv_callers/all_DEL.bed'))
+
+colnames(df_rice) <- c('scaffold', 'start', 'end')
+
+df_rice$length <- df_rice$end - df_rice$start
+
+df_rice$host <- "Rice Blast"
+
+df_wheat <- data.frame(fread('../../pav_newest_wheat_blast_all/sv_callers/all_DEL.bed'))
+
+colnames(df_wheat) <- c('scaffold', 'start', 'end')
+
+df_wheat$length <- df_wheat$end - df_wheat$start
+
+df_wheat$host <- "Wheat Blast" 
+
+plot_df <- rbind(df_rice, df_wheat)
+
+plot_df$length <- plot_df$length/1000
+
+```
+
+```{r}
+
+median(df_rice$length)
+
+```
+
+```{r}
+
+median(df_wheat$length)
+
+
+```
+
+
+
+```{r}
+
+p <- ggplot(data=plot_df, aes(x=length, color=host)) +
+    stat_density(geom="line",position="identity",adjust=5)+
+  ylab('Density')+
+  xlab('Deletion Lengths (kbp)')+
+  xlim(0,20) +
+  theme_minimal()+
+  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'right', legend.text=element_text(size=6)) + theme(legend.title = element_blank())
+
+ggsave('deletion_lengths_density_plot.pdf', plot = p, width = 6.5/2, height = 4.5/2)
+
+```
+

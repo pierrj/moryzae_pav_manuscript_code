@@ -1,0 +1,293 @@
+---
+title: "cor_matrices"
+output: html_document
+date: '2022-12-02'
+---
+
+```{r}
+library(data.table)
+library(ggplot2)
+library(reshape2)
+library(psych)
+```
+
+
+```{r}
+
+cont_cols <- c(
+'gene_gc',
+'flanking_1kb_gc',
+'lengths',
+'H3K27ac',
+'H3K27me3',
+'H3K36me3',
+'cm_expression',
+'ip_expression',
+'eccdna_cov',
+'methylation'
+)
+
+cat_cols <- c(
+'any_te',
+'gene_nearby',
+'tm',
+'signalp',
+'effectorp',
+'go',
+'pfam'
+)
+
+```
+
+
+```{r}
+
+df <- data.frame(fread('../gene_info.full_model.rice_blast.txt'))
+df <- subset(df, select = c(cont_cols))
+df <- df[, rev(colnames(df))]
+
+colnames(df)[colnames(df) == 'H3K27me3'] <- 'H3K27me3 Signal'
+colnames(df)[colnames(df) == 'lengths'] <- 'Gene length'
+colnames(df)[colnames(df) == 'flanking_1kb_gc'] <- 'Flanking AT Content'
+colnames(df)[colnames(df) == 'pfam'] <- 'Has PFAM Annotation?'
+colnames(df)[colnames(df) == 'eccdna_cov'] <- 'CircleSeq Signal'
+colnames(df)[colnames(df) == 'any_te'] <- 'Has TE Nearby?'
+colnames(df)[colnames(df) == 'H3K36me3'] <- 'H3K36me3 Signal'
+colnames(df)[colnames(df) == 'methylation'] <- '% Methylated Cytosines'
+colnames(df)[colnames(df) == 'go'] <- 'Has GO Annotation?'
+colnames(df)[colnames(df) == 'H3K27ac'] <- 'H3K27ac Signal'
+colnames(df)[colnames(df) == 'cm_expression'] <- 'Expression in Culture'
+colnames(df)[colnames(df) == 'gene_nearby'] <- 'Has Gene Nearby?'
+colnames(df)[colnames(df) == 'tm'] <- 'Has TM Domain?'
+colnames(df)[colnames(df) == 'signalp'] <- 'Has Signal Peptide?'
+colnames(df)[colnames(df) == 'gene_gc'] <- 'Gene AT Content'
+colnames(df)[colnames(df) == 'ip_expression'] <- 'Expression in Planta'
+colnames(df)[colnames(df) == 'effectorp'] <- 'Is Predicted Effector?'
+
+```
+
+```{r}
+
+cormat <- round(cor(df, method="spearman"),2)
+cormat[lower.tri(cormat)] <- NA
+cormat <- melt(cormat,na.rm=TRUE)
+
+cormat[cormat == 1.00] <- NA
+
+```
+
+```{r}
+p <- ggplot(data = cormat, aes(Var2, Var1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+   midpoint = 0, limit = c(-1,1), space = "Lab",
+   name="Spearman\nCorrelation") +
+  theme_minimal()+
+  geom_text(aes(Var2, Var1, label = value), color = "black", size = 6*0.36)+
+  xlab('')+
+  ylab('')+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+         axis.text = element_text(size=6), legend.text=element_text(size=6),
+        legend.title = element_text(size=6))+
+  theme(legend.justification=c(1,0),
+        legend.direction = "horizontal",
+        legend.position = c(0.6,0.7),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())+
+  theme(plot.margin = unit(c(0,0,0,0), "cm"))+
+  guides(fill = guide_colorbar(title.position = "top", title.hjust=0.5, barwidth=4))
+
+ggsave('continuous_cor_matrix.pdf', plot = p, width = 6.5/2, height = 6.5/2)
+
+
+```
+
+
+```{r}
+df <- data.frame(fread('../gene_info.full_model.rice_blast.txt'))
+df <- subset(df, select = c(cat_cols))
+df <- df[, rev(colnames(df))]
+
+colnames(df)[colnames(df) == 'H3K27me3'] <- 'H3K27me3 Signal'
+colnames(df)[colnames(df) == 'lengths'] <- 'Gene length'
+colnames(df)[colnames(df) == 'flanking_1kb_gc'] <- 'Flanking AT Content'
+colnames(df)[colnames(df) == 'pfam'] <- 'Has PFAM Annotation?'
+colnames(df)[colnames(df) == 'eccdna_cov'] <- 'CircleSeq Signal'
+colnames(df)[colnames(df) == 'any_te'] <- 'Has TE Nearby?'
+colnames(df)[colnames(df) == 'H3K36me3'] <- 'H3K36me3 Signal'
+colnames(df)[colnames(df) == 'methylation'] <- '% Methylated Cytosines'
+colnames(df)[colnames(df) == 'go'] <- 'Has GO Annotation?'
+colnames(df)[colnames(df) == 'H3K27ac'] <- 'H3K27ac Signal'
+colnames(df)[colnames(df) == 'cm_expression'] <- 'Expression in Culture'
+colnames(df)[colnames(df) == 'gene_nearby'] <- 'Has Gene Nearby?'
+colnames(df)[colnames(df) == 'tm'] <- 'Has TM Domain?'
+colnames(df)[colnames(df) == 'signalp'] <- 'Has Signal Peptide?'
+colnames(df)[colnames(df) == 'gene_gc'] <- 'Gene AT Content'
+colnames(df)[colnames(df) == 'ip_expression'] <- 'Expression in Planta'
+colnames(df)[colnames(df) == 'effectorp'] <- 'Is Predicted Effector?'
+
+
+```
+
+
+```{r}
+
+phi_mat <- data.frame(matrix(, nrow=length(colnames(df)), ncol=length(colnames(df))))
+
+colnames(phi_mat) <- colnames(df)
+rownames(phi_mat) <- colnames(df)
+
+for (x in colnames(df)) {
+  print(x)
+  row <- c()
+  for (y in colnames(df)) {
+    row <- c(row, phi(table(df[[x]], df[[y]])))
+  }
+  phi_mat[x,] <- row
+}
+
+```
+```{r}
+phi_mat <- as.matrix(phi_mat)
+phi_mat[lower.tri(phi_mat)] <- NA
+phi_mat <- melt(phi_mat,na.rm=TRUE)
+
+phi_mat[phi_mat == 1.00] <- NA
+
+
+```
+
+
+```{r}
+p <- ggplot(data = phi_mat, aes(Var2, Var1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+   midpoint = 0, limit = c(-1,1), space = "Lab",
+   name="Phi\nCoefficient") +
+  theme_minimal()+
+  geom_text(aes(Var2, Var1, label = value), color = "black", size = 6*0.36)+
+  xlab('')+
+  ylab('')+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+         axis.text = element_text(size=6), legend.text=element_text(size=6),
+        legend.title = element_text(size=6))+
+  theme(legend.justification=c(1,0),
+        legend.direction = "horizontal",
+        legend.position = c(0.6,0.7),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())+
+  theme(plot.margin = unit(c(0,0,0,0), "cm"))+
+  guides(fill = guide_colorbar(title.position = "top", title.hjust=0.5, barwidth=4))
+
+ggsave('categorical_cor_matrix.pdf', plot = p, width = 6.5/2, height = 6.5/2)
+```
+
+```{r}
+
+df <- data.frame(fread('../gene_info.full_model.rice_blast.txt'))
+
+colnames(df)[colnames(df) == 'H3K27me3'] <- 'H3K27me3 Signal'
+colnames(df)[colnames(df) == 'lengths'] <- 'Gene length'
+colnames(df)[colnames(df) == 'flanking_1kb_gc'] <- 'Flanking AT Content'
+colnames(df)[colnames(df) == 'pfam'] <- 'Has PFAM Annotation?'
+colnames(df)[colnames(df) == 'eccdna_cov'] <- 'CircleSeq Signal'
+colnames(df)[colnames(df) == 'any_te'] <- 'Has TE Nearby?'
+colnames(df)[colnames(df) == 'H3K36me3'] <- 'H3K36me3 Signal'
+colnames(df)[colnames(df) == 'methylation'] <- '% Methylated Cytosines'
+colnames(df)[colnames(df) == 'go'] <- 'Has GO Annotation?'
+colnames(df)[colnames(df) == 'H3K27ac'] <- 'H3K27ac Signal'
+colnames(df)[colnames(df) == 'cm_expression'] <- 'Expression in Culture'
+colnames(df)[colnames(df) == 'gene_nearby'] <- 'Has Gene Nearby?'
+colnames(df)[colnames(df) == 'tm'] <- 'Has TM Domain?'
+colnames(df)[colnames(df) == 'signalp'] <- 'Has Signal Peptide?'
+colnames(df)[colnames(df) == 'gene_gc'] <- 'Gene AT Content'
+colnames(df)[colnames(df) == 'ip_expression'] <- 'Expression in Planta'
+colnames(df)[colnames(df) == 'effectorp'] <- 'Is Predicted Effector?'
+
+```
+
+```{r}
+cat_cols[cat_cols == 'H3K27me3'] <- 'H3K27me3 Signal'
+cat_cols[cat_cols == 'lengths'] <- 'Gene length'
+cat_cols[cat_cols == 'flanking_1kb_gc'] <- 'Flanking AT Content'
+cat_cols[cat_cols == 'pfam'] <- 'Has PFAM Annotation?'
+cat_cols[cat_cols == 'eccdna_cov'] <- 'CircleSeq Signal'
+cat_cols[cat_cols == 'any_te'] <- 'Has TE Nearby?'
+cat_cols[cat_cols == 'H3K36me3'] <- 'H3K36me3 Signal'
+cat_cols[cat_cols == 'methylation'] <- '% Methylated Cytosines'
+cat_cols[cat_cols == 'go'] <- 'Has GO Annotation?'
+cat_cols[cat_cols == 'H3K27ac'] <- 'H3K27ac Signal'
+cat_cols[cat_cols == 'cm_expression'] <- 'Expression in Culture'
+cat_cols[cat_cols == 'gene_nearby'] <- 'Has Gene Nearby?'
+cat_cols[cat_cols == 'tm'] <- 'Has TM Domain?'
+cat_cols[cat_cols == 'signalp'] <- 'Has Signal Peptide?'
+cat_cols[cat_cols == 'gene_gc'] <- 'Gene AT Content'
+cat_cols[cat_cols == 'ip_expression'] <- 'Expression in Planta'
+cat_cols[cat_cols == 'effectorp'] <- 'Is Predicted Effector?'
+
+
+cont_cols[cont_cols == 'H3K27me3'] <- 'H3K27me3 Signal'
+cont_cols[cont_cols == 'lengths'] <- 'Gene length'
+cont_cols[cont_cols == 'flanking_1kb_gc'] <- 'Flanking AT Content'
+cont_cols[cont_cols == 'pfam'] <- 'Has PFAM Annotation?'
+cont_cols[cont_cols == 'eccdna_cov'] <- 'CircleSeq Signal'
+cont_cols[cont_cols == 'any_te'] <- 'Has TE Nearby?'
+cont_cols[cont_cols == 'H3K36me3'] <- 'H3K36me3 Signal'
+cont_cols[cont_cols == 'methylation'] <- '% Methylated Cytosines'
+cont_cols[cont_cols == 'go'] <- 'Has GO Annotation?'
+cont_cols[cont_cols == 'H3K27ac'] <- 'H3K27ac Signal'
+cont_cols[cont_cols == 'cm_expression'] <- 'Expression in Culture'
+cont_cols[cont_cols == 'gene_nearby'] <- 'Has Gene Nearby?'
+cont_cols[cont_cols == 'tm'] <- 'Has TM Domain?'
+cont_cols[cont_cols == 'signalp'] <- 'Has Signal Peptide?'
+cont_cols[cont_cols == 'gene_gc'] <- 'Gene AT Content'
+cont_cols[cont_cols == 'ip_expression'] <- 'Expression in Planta'
+cont_cols[cont_cols == 'effectorp'] <- 'Is Predicted Effector?'
+```
+
+
+```{r}
+pbcor_mat <- data.frame(matrix(, nrow=length(cont_cols), ncol=length(cat_cols)))
+
+
+colnames(pbcor_mat) <- cat_cols
+rownames(pbcor_mat) <- cont_cols
+
+for (x in cont_cols) {
+  print(x)
+  row <- c()
+  for (y in cat_cols) {
+    row <- c(row, round(cor(df[[x]], df[[y]]),2))
+  }
+  pbcor_mat[x,] <- row
+}
+
+pbcor_mat <- melt(as.matrix(pbcor_mat))
+
+```
+
+```{r}
+
+p <- ggplot(data = pbcor_mat, aes(Var2, Var1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+   midpoint = 0, limit = c(-1,1), space = "Lab",
+   name="Point-Biserial\nCorrelation") +
+  theme_minimal()+
+  geom_text(aes(Var2, Var1, label = value), color = "black", size = 6*0.36)+
+  xlab('')+
+  ylab('')+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+         axis.text = element_text(size=6), legend.text=element_text(size=6),
+        legend.title = element_text(size=6))+
+  guides(fill = guide_colorbar(title.position = "top", title.hjust=0.5))
+
+ggsave('cat_by_cont_cor_matrix.pdf', plot = p, width = 6.5, height = 6.5/2)
+
+
+```
+

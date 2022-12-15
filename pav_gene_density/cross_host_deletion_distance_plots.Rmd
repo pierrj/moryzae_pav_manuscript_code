@@ -1,0 +1,326 @@
+---
+title: "cross_host_deletion_distance_plots"
+output: html_document
+date: '2022-11-04'
+---
+
+```{r}
+
+library(ggplot2)
+library(tidyr)
+library(data.table)
+library(ggnewscale)
+
+```
+
+
+```{r}
+df_distance_info_wheat_blast <-data.frame(fread(
+  '../../pav_newest_wheat_blast_all/deletion_statistics/gene_deletion_distance_info.txt'))
+
+df_distance_info_wheat_blast$host = "wheat"
+  
+df_distance_info_rice_blast <- data.frame(fread(
+  '../../pav_newest_gladieux_only_fungap/deletion_statistics/gene_deletion_distance_info.txt'))
+
+df_distance_info_rice_blast$host = "rice"
+
+df_distance_info <- rbind(df_distance_info_rice_blast, df_distance_info_wheat_blast)
+
+rm(df_distance_info_wheat_blast)
+
+rm(df_distance_info_rice_blast)
+
+
+colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage",
+                            'pav_gene_distance_upstream', 'pav_gene_distance_downstream', 'pav_gene_distance_closest',
+                            'conserved_gene_distance_upstream', 'conserved_gene_distance_downstream', 'conserved_gene_distance_closest',
+                            'enough_space_pav', 'enough_space_conserved',
+                            'pav_nearby', 'conserved_nearby', 'host'
+                            )
+
+```
+
+
+```{r}
+
+plot_columns_list = list(
+  c("pav_gene_distance_upstream", "pav_gene_distance_downstream"),
+  c("conserved_gene_distance_upstream", "conserved_gene_distance_downstream")
+)
+
+axis_labels = c(
+  "PAV Gene",
+  "Conserved Gene"
+)
+
+```
+
+
+```{r}
+
+for (i in seq(from=1, to=length(plot_columns_list))){
+  
+  plot_columns = unlist(plot_columns_list[i])
+  
+  axis_label = axis_labels[i]
+  
+  df <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,
+                         c('lineage_conserved', 'lineage_pav')]
+  df[df==TRUE] <- 1
+  df[df==FALSE] <- 0
+  
+  w <- which(df==1, arr.ind = T)
+  df$gene_type <- toupper(names(df)[max.col(df)])
+  
+  df[df=="LINEAGE_PAV"] <- "PAV"
+  df[df=="LINEAGE_CONSERVED"] <- "Conserved"
+  
+  df$host <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,]$host
+  
+  df$gene_type_w_host <- paste(df$gene_type, df$host)
+  
+  df[df=="Conserved rice"] <- "Rice Blast (Conserved)"
+  df[df=="PAV rice"] <- "Rice Blast (PAV)"
+  df[df=="Conserved wheat"] <- "Wheat Blast (Conserved)"
+  df[df=="PAV wheat"] <- "Wheat Blast (PAV)"
+  
+  df <- subset(df, select=-c(lineage_pav, lineage_conserved, gene_type, host))
+  
+  df$distance_up <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,][[plot_columns[1]]]
+  df$distance_down <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,][[plot_columns[2]]]
+  
+  df <- na.omit(df)
+  
+  df$distance_up <- log10(df$distance_up)
+    
+  df$distance_down <- log10(df$distance_down)
+  
+  ## HMMM SHOULD THIS BE THE WHOLE POP MEDIAN, PROBABLY NOT ##
+  
+  x_int <- median(log10(df_distance_info[plot_columns[1]])[[1]], na.rm=TRUE)
+  y_int <- median(log10(df_distance_info[plot_columns[2]])[[1]], na.rm=TRUE)
+  
+  p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="Rice Blast (Conserved)"),aes(fill = ..level..), geom = "polygon") + # 2d density
+    scale_fill_distiller(palette = "Reds", direction = 1) +
+    new_scale_fill() +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="Rice Blast (PAV)"),aes(fill = ..level..), geom = "polygon") + # 2d density
+    scale_fill_distiller(palette = "Greens", direction = 1) +
+    new_scale_fill() +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="Wheat Blast (Conserved)"),aes(fill = ..level..), geom = "polygon") + # 2d density
+    scale_fill_distiller(palette = "Blues", direction = 1) +
+    new_scale_fill() +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="Wheat Blast (PAV)"),aes(fill = ..level..), geom = "polygon") + # 2d density
+    scale_fill_distiller(palette = "Purples", direction = 1) +
+    geom_segment(aes(x=x_int,
+                     xend=x_int,
+                     y=-Inf,
+                     yend=Inf), size = 0.5, linetype='dashed') +## draw median segments
+    geom_segment(aes(x=-Inf,
+                     xend=Inf,
+                     y=y_int,
+                     yend=y_int), size = 0.5, linetype='dashed') +
+    scale_x_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) + # logticks
+    scale_y_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) +
+    xlab(paste("5' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
+    ylab(paste("3' Distance to \nnearest ", axis_label, " (kbp)", sep ='')) +
+    facet_grid(. ~ gene_type_w_host)+
+    theme_classic()+
+      theme(axis.text=element_text(size=6), axis.title=element_text(size=8), 
+        legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6))+
+    theme( strip.background = element_blank())+
+    theme(legend.position="none")
+  
+  ggsave(paste("facetgrid_",
+             strsplit(plot_columns[1], '_')[[1]][1],
+             '_',
+             strsplit(plot_columns[1], '_')[[1]][2],
+             '_3D.tiff',sep = ''), device = "tiff", plot = p, width = 6.5, height = 6.5/4, dpi=600)
+
+}
+
+```
+
+```{r}
+rm(df)
+rm(p)
+```
+
+```{r}
+
+plot_columns_list = list(
+  c("pav_gene_distance_upstream", "pav_gene_distance_downstream"),
+  c("conserved_gene_distance_upstream", "conserved_gene_distance_upstream")
+)
+
+axis_labels = c(
+  "PAV Gene",
+  "Conserved Gene"
+)
+
+```
+
+```{r}
+
+for (i in seq(from=1, to=length(plot_columns_list))){
+  
+  plot_columns = unlist(plot_columns_list[i])
+  
+  axis_label = axis_labels[i]
+  
+  df <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,
+                         c('lineage_conserved', 'lineage_pav')]
+  df[df==TRUE] <- 1
+  df[df==FALSE] <- 0
+  
+  w <- which(df==1, arr.ind = T)
+  df$gene_type <- toupper(names(df)[max.col(df)])
+  
+  df[df=="LINEAGE_PAV"] <- "PAV"
+  df[df=="LINEAGE_CONSERVED"] <- "Conserved"
+  
+  df$host <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,]$host
+  
+  df$gene_type_w_host <- paste(df$gene_type, df$host)
+  
+  df[df=="Conserved rice"] <- "Rice Blast (Conserved)"
+  df[df=="PAV rice"] <- "Rice Blast (PAV)"
+  df[df=="Conserved wheat"] <- "Wheat Blast (Conserved)"
+  df[df=="PAV wheat"] <- "Wheat Blast (PAV)"
+  
+  df <- subset(df, select=-c(lineage_pav, lineage_conserved, gene_type, host))
+  
+  nrows <- nrow(df)
+  
+  df <- rbind(df,df)
+  
+  df$orientation <- c(rep(paste("5' Distance to \nNearest ",axis_label,' (kbp)',sep=''),nrows),
+                      rep(paste("3' Distance to \nNearest ",axis_label,' (kbp)',sep=''),nrows))
+  
+  df$distance <- c(df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,][[plot_columns[1]]],
+                   df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,][[plot_columns[2]]])
+  
+  df$orientation <- factor(df$orientation, levels = c(
+                            paste("5' Distance to \nNearest ",axis_label,' (kbp)',sep=''),
+                            paste("3' Distance to \nNearest ",axis_label,' (kbp)',sep='')
+                            ))
+  
+
+  ## omitting NAs here doesnt get rid of genes with one upstream value but no downstream value
+  df <- na.omit(df)
+  
+  df$distance <- log10(df$distance)
+    
+  p <- ggplot(df, aes(x=distance, y=gene_type_w_host, fill=gene_type_w_host)) + 
+    geom_violin(lwd=0.25) + geom_boxplot(width = 0.15, outlier.shape = NA,lwd=0.25)+
+    theme_classic()+
+    facet_grid(. ~ orientation)+
+    scale_x_continuous(breaks=c(1,3,5), labels=c("0.01", "1", "100"), limits = c(0,6))+
+    xlab('')+
+    ylab('')+
+    theme(legend.position = "none")+
+    theme( strip.background = element_blank())+
+    theme(axis.text=element_text(size=6), axis.title=element_text(size=8), 
+    legend.title=element_text(size=8), legend.text=element_text(size=6))
+  
+  ggsave(paste("facetgrid_",
+               strsplit(plot_columns[1], '_')[[1]][1],
+               '_',
+               strsplit(plot_columns[1], '_')[[1]][2],
+               '_violinplot.pdf',sep = ''), plot = p, width = 6.5*(2/3), height = (6.5/4)+0.5)
+  
+}
+
+```
+
+```{r}
+rm(df)
+rm(p)
+```
+
+
+```{r}
+
+categorical_variables <- c(
+  'pav_nearby',
+  'conserved_nearby'
+)
+
+legend_labels_categorical <- c(
+  'PAV Gene Nearby',
+  'Conserved Gene Nearby'
+)
+
+```
+
+```{r}
+
+for (i in seq(from=1,to=length(categorical_variables))){
+  
+  variable = categorical_variables[i]
+  
+  legend_label = legend_labels_categorical[i]
+  
+  percent_pav_true_rice <- mean(
+    df_distance_info[[variable]][df_distance_info$lineage_pav==TRUE & df_distance_info$host == 'rice'], na.rm = TRUE
+  )*100
+  
+  percent_conserved_true_rice <- mean(
+     df_distance_info[[variable]][df_distance_info$lineage_conserved==TRUE & df_distance_info$host == 'rice'], na.rm = TRUE
+  )*100
+
+  percent_pav_true_wheat <- mean(
+    df_distance_info[[variable]][df_distance_info$lineage_pav==TRUE & df_distance_info$host == 'wheat'], na.rm = TRUE
+  )*100
+  
+  percent_conserved_true_wheat <- mean(
+     df_distance_info[[variable]][df_distance_info$lineage_conserved==TRUE & df_distance_info$host == 'wheat'], na.rm = TRUE
+  )*100
+  
+  ## necessary for stacked barplot/percentage barplot plotting
+  percentage <- c(percent_pav_true_rice,
+                percent_conserved_true_rice,
+                percent_pav_true_wheat,
+                percent_conserved_true_wheat)
+  
+  og_group <- c("PAV", 
+                "Conserved", 
+                "PAV", 
+                "Conserved")
+  
+  obs_over_expected_rice <- round(percent_pav_true_rice/percent_conserved_true_rice, 1)
+  obs_over_expected_wheat <- round(percent_pav_true_wheat/percent_conserved_true_wheat,1)
+  
+  host <- c(paste("Rice Blast \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
+            paste("Rice Blast \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
+            paste("Wheat Blast \n PAV/Cons. = ",
+                  obs_over_expected_wheat,sep=''),
+            paste("Wheat Blast \n PAV/Cons. = ",
+                  obs_over_expected_wheat,sep=''))
+  
+  
+  plot_df <- data.frame(percentage,og_group,host)
+  
+  plot_df$og_group <- factor(plot_df$og_group,levels = c("PAV", "Conserved"))
+  
+  
+  p <- ggplot(plot_df, aes(x = og_group, y = percentage)) +
+    geom_bar(stat = 'identity', position = 'dodge') +
+    theme_minimal() +
+    xlab("") + ylab("Percentage") +
+    scale_y_continuous(limits=c(0,100)) +
+    facet_grid(. ~ host)+
+    ggtitle(legend_label)+
+    theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
+  theme(strip.text.x = element_text(size = 6))+
+    theme(legend.position='none')
+  
+  ggsave(paste(variable, "_", 'stacked_barplot',
+               '.pdf',sep = ''), plot = p, width = 6.5/3, height = (6.5/4)+0.5)
+}
+
+
+```

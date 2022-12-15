@@ -1,0 +1,116 @@
+---
+title: "go_enrichment"
+output: html_document
+---
+
+```{r}
+
+library(topGO)
+library(ggplot2)
+localGetTermsDefinition<-getFromNamespace(".getTermsDefinition", "topGO")
+
+```
+
+```{r}
+
+df_all_onts <- data.frame(matrix(ncol = 6, nrow = 0))
+
+colnames(df_all_onts) <- c("terms", "annotated", "significant", "expected", "pvalue", "observed_expected_ratio")
+
+for (ontology in c('CC', 'BP', 'MF')) {
+  geneID2GO <-  readMappings("Orthogroups_GO_ids.txt")
+
+  geneNames <- names(geneID2GO)
+  
+  myInterestingGenes <- as.character(read.csv("../pca_heat_map_phylogeny/lineage_differentiating_pavs.txt",header=F, stringsAsFactors=FALSE, colClasses="character")$V1)
+  geneList <- factor(as.integer(geneNames %in% myInterestingGenes))
+  names(geneList) <- geneNames
+  
+  GOdata <- new("topGOdata", ontology = ontology, allGenes = geneList, annot = annFUN.gene2GO, gene2GO = geneID2GO)
+  
+  test.stat <- new("weightCount", testStatistic = GOFisherTest, name = "Fisher test")
+
+  resultFisher <- getSigGroups(GOdata, test.stat)
+  
+  pvalFisher <- score(resultFisher)
+  
+  allRes <- GenTable(GOdata, weight = resultFisher, orderBy = "weight", ranksOf = "classic", topNodes=20)
+  
+  terms <- localGetTermsDefinition(allRes$GO.ID, ontology(GOdata), numChar=1000)
+  
+  allRes_df <- data.frame(terms, allRes$Annotated, allRes$Significant, allRes$Expected, allRes$weight)
+  
+  colnames(allRes_df) <- c('terms', 'annotated', 'significant', 'expected', 'pvalue')
+  
+  allRes_df$pvalue <- -log10(as.numeric(as.character(allRes_df$pvalue)))
+  
+  allRes_df$observed_expected_ratio <- allRes_df$significant/allRes_df$expected
+  
+  allRes_df$terms <- factor(allRes_df$terms, levels = allRes_df$terms[order(allRes_df$pvalue)])
+
+  output.file <- file(paste(ontology, '_pav_ogs_enrichment.txt', sep = ''), "wb") ## to get unix line endings
+
+  write.table(allRes, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+  close(output.file)
+  
+  if ( ontology == 'CC') {
+    title = 'Cellular Component'
+  } else if (ontology == 'BP') {
+    title = 'Biological Pathway'
+  } else if (ontology == 'MF') {
+    title = 'Molecular Function'
+  }
+
+  # pvalue 0.05 cutoff
+    
+  allRes_df <- allRes_df[allRes_df$pvalue > -log10(0.05),]
+  
+  # make sure at least 3 PAV OGs are within that GO term
+  
+  allRes_df <- allRes_df[allRes_df$significant >= 3,]
+  
+  df_all_onts <- rbind(df_all_onts, allRes_df)
+  
+  p <- ggplot(allRes_df, aes(x = observed_expected_ratio, y = factor(terms))) +
+    geom_point(aes(color=pvalue, size=annotated)) + theme_classic() +
+    scale_colour_gradient(low = "blue", high = "red") +
+    geom_rect(mapping=aes(xmin=-Inf, xmax=1, ymin=-Inf, ymax=Inf), color="grey", alpha=0.01) + # rectangle shows the mark for observed/expected is 1
+    xlab("Observed count over expected count") + ylab(title) + labs(color = "-Log10 p-value", size = "Number of genes \nwith annotation")+theme(axis.text=element_text(size=6), axis.title=element_text(size=8), legend.title=element_text(size=8))+
+    guides(colour = guide_colorbar(order = 1), 
+                size = guide_legend(order = 2))
+  
+  ggsave(paste(ontology, '_pav_ogs_enrichment.pdf', sep = ''), plot = p, width = 6.5, height = 3.5)
+  
+}
+
+
+df_all_onts$terms <- as.character(df_all_onts$terms)
+
+df_all_onts$terms[df_all_onts$terms == "oxidoreductase activity, acting on paired donors, with incorporation or reduction of molecular oxygen"] <- "oxidoreductase activity, acting on paired donors,\n with incorporation or reduction of molecular oxygen"
+
+# df_all_onts$terms[df_all_onts$terms == "DNA-binding transcription factor activity, RNA polymerase II-specific"] <- "DNA-binding transcription factor activity,\n RNA polymerase II-specific"
+ 
+# df_all_onts$terms[df_all_onts$terms == "glucan endo-1,4-beta-glucanase activity, C-3 substituted reducing group"] <- "glucan endo-1,4-beta-glucanase activity,\n C-3 substituted reducing group"
+ 
+df_all_onts$terms <- as.factor(df_all_onts$terms)
+
+p <- ggplot(df_all_onts, aes(x = observed_expected_ratio, y = factor(terms))) +
+  geom_point(aes(color=pvalue, size=annotated)) + theme_classic() +
+  scale_colour_gradient(low = "blue", high = "red") +
+  # geom_rect(mapping=aes(xmin=-Inf, xmax=1, ymin=-Inf, ymax=Inf), color="grey", alpha=0.01) + # rectangle shows the mark for observed/expected is 1
+  xlab("Observed count over expected count") + ylab('')+ labs(color = "-Log10 p-value", size = "Number of orthogroups \nwith annotation")+theme(axis.text=element_text(size=6), axis.title=element_text(size=8), legend.title=element_text(size=8))+
+  guides(colour = guide_colorbar(order = 1),
+              size = guide_legend(order = 2))
+    # scale_size_continuous(breaks = c(log10(16),
+    #                                 log10(100),
+    #                                 log10(1000)),
+    #                      labels = c("10",
+    #                                 "100",
+    #                                 "1000"))
+
+ggsave(paste('all_onts_pav_ogs_enrichment.pdf', sep = ''), plot = p, width = 6.5, height = 3.5)
+
+```
+
+

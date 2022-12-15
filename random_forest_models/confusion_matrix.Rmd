@@ -1,0 +1,77 @@
+---
+title: "confusion_matrix_r"
+output: html_document
+date: '2022-11-03'
+---
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+
+### order
+# TP
+# FN
+# FP
+# TN
+datas <- list(
+  c(2331.9,  267.15,  535.85,  82514.12),
+  c(2313.76, 323.63,  532.19,  83598.63),
+  c(10236.33, 477.24,  854.64,  77629.21),
+  c(7263.96, 115856.04, 12696.56, 872808.44),
+  c(6471.44, 21035.56, 49905.2, 816027.8)
+)
+
+titles <- c(
+  "Full Model Trained \nand Tested on Subset Rice Blast Data",
+  "Reduced Model Trained and \nTested on Subset Rice Blast Data",
+  "Model Trained and \nTested on Subset Wheat Blast Data",
+  "Reduced Model Trained on Subset Rice \nData and Tested on Wheat Blast Data",
+  "Model Trained on Subset Wheat Blast \nData and Tested on Rice Blast Data"
+)
+
+outputs <- c(
+  'rice_full_model_confusion_matrix.pdf',
+  'rice_partial_model_confusion_matrix.pdf',
+  'wheat_partial_model_confusion_matrix.pdf',
+  'rice_first_cross_host_confusion_matrix.pdf',
+  'wheat_first_cross_host_confusion_matrix.pdf'
+)
+
+```
+
+```{r}
+
+for (i in seq(from=1,to=length(outputs))){
+  data <- unlist(datas[i])
+  title <- titles[i]
+  output <- outputs[i]
+  
+  
+  TClass <- factor(c("PAV Gene", "PAV Gene", "Not PAV Gene", "Not PAV Gene"))
+  PClass <- factor(c("PAV Gene", "Not PAV Gene", "PAV Gene", "Not PAV Gene"))
+  judgement<- c("good", "bad", "bad","good")
+  
+  data <- round(data, digits=0)
+  
+  df <- data.frame(TClass, PClass, data,judgement)
+  
+  p <- ggplot(data =  df, mapping = aes(x = TClass, y = PClass,fill=judgement)) +
+      geom_tile()+
+    geom_text(aes(label = data),size=(6*0.352777778)) +
+    ylab('Predicted Label')+
+    xlab('True Label')+
+    scale_fill_manual(values = c(good="#0277bd", bad="orange"))+
+    ggtitle(title)+
+    theme_classic()+
+    theme(legend.position = "none")+
+    theme(axis.text=element_text(size=6), axis.title=element_text(size=8), 
+          legend.title=element_text(size=8),plot.title=element_text(size=8,hjust=0.5),
+          plot.title.position = "plot")
+  
+  ggsave(output, plot = p, width = 2.5, height = 2)
+}
+
+```
+

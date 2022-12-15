@@ -1,0 +1,74 @@
+---
+title: "plot_phylogeny"
+output: html_document
+date: '2022-11-28'
+---
+
+```{r}
+library(phytools)
+library(ape)
+```
+
+
+```{r}
+# read in new tree
+
+tree = read.tree(file='Single_Copy_Orthologue_Sequences_msas_combined.trimmed.fasttree')
+
+tree = root(tree, outgroup = "NI907",resolve.root=TRUE)
+
+# prune NI907
+
+tree <- drop.tip(tree,tree$tip.label[match("NI907", tree$tip.label)])
+
+str_split_vector <- function(x, string){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- strsplit(item, string)[[1]][1]
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+tree$tip.label <- str_split_vector(tree$tip.label, '_')
+
+write.tree(tree, file='test_rooted_tree.txt')
+
+```
+
+```{r}
+## read in lineage info
+
+assembly_stats <- data.frame(fread('gladieux_et_al_assembly_stats.txt', na.strings = ''))
+
+lineage_info <- subset(assembly_stats, select = c(V1, V3, V4))
+
+colnames(lineage_info) <- c('isolate', 'lineage', 'sublineage')
+
+lineage_info[lineage_info$isolate == 'WD-3-1_1',]$isolate <- 'WD-3-1'
+
+lineage_info$color <- NA
+
+lineage_info$color[lineage_info$lineage==1] = 'black'
+lineage_info$color[lineage_info$lineage==2] = 'red'
+lineage_info$color[lineage_info$lineage==3] = 'green'
+lineage_info$color[lineage_info$lineage==4] = 'blue'
+
+lineage_info <- lineage_info[match(tree$tip.label, lineage_info$isolate),]
+
+```
+
+
+
+```{r}
+pdf('rice_blast_labeled_tree.pdf', width=6.5, height=6.5)
+par(mar = c(1, 1, 1, 1))
+plot(tree, type = "fan",tip.color=lineage_info$color,cex=0.5)
+nodelabels(node=1:tree$Nnode+Ntip(tree),
+    pie=cbind(as.numeric(tree$node.label),1-as.numeric(tree$node.label)),
+    piecol=c("black","white"),cex=0.2)
+add.scale.bar()
+dev.off()
+```
+
+

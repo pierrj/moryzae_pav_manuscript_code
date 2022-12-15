@@ -1,0 +1,409 @@
+---
+title: "pav_w_tree_climbing"
+output: html_document
+---
+
+```{r}
+library(phytools)
+library(ape)
+library(data.table)
+library(dplyr)
+library(tidyr)
+```
+
+```{r}
+## open orthogroups data frame
+## loop through lineages
+### open tree and subset tree to lineage
+### get candidate PAV orthogroups
+### loop through candidate PAV orthogroups
+#### climb tree for pav orthogroup
+#### count number of independent deletions based off tree climbing
+```
+
+```{r}
+
+df <- data.frame(fread('Orthogroups.tsv', na.strings = ''))
+
+df <- subset(df, select = -c(Orthogroup))
+
+## change names to match lineage info spreadsheet
+
+str_split_vector <- function(x, string){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- strsplit(item, string)[[1]][1]
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+
+# fix col names
+colnames(df) <- str_split_vector(colnames(df), '_')
+
+# convert to binary
+df[is.na(df)] <- 0
+
+df[df != 0] <- 1
+
+df[] <- lapply(df, function(x) as.numeric(x))
+
+
+## add back OG names
+
+df_ogs <- data.frame(fread('Orthogroups.tsv', na.strings = ''))
+
+rownames(df) <- df_ogs$Orthogroup
+
+```
+
+```{r}
+# read in validated PAVs
+
+validated_pavs <- data.frame(fread('pav_table.simplified', header = FALSE))
+
+colnames(validated_pavs) <- c('genome', 'og', 'actuallyfound')
+
+validated_pavs$genome <- gsub('.fasta', '', validated_pavs$genome)
+
+validated_pavs$og <- gsub('_protein.fasta', '', validated_pavs$og)
+
+# keep only those that were thought to be pav and were verified to not be in genome
+validated_pavs <- validated_pavs[validated_pavs$actuallyfound == 'no',]
+
+# drop col
+validated_pavs <- subset(validated_pavs, select = -c(actuallyfound))
+
+# change to dataframe with only actuallyfound no filled in
+validated_pavs <- validated_pavs %>% 
+            group_by(og) %>% 
+            mutate(id=row_number()) %>% 
+            pivot_wider(names_from=og, values_from=genome) %>% 
+            ungroup()
+
+validated_pavs <- subset(validated_pavs, select = -c(id))
+
+# turn to df of 1s and 0s
+validated_pavs <- validated_pavs %>%
+                      pivot_longer(cols = everything(), names_to = 'Groups', 
+                           values_drop_na = TRUE) %>%
+                      distinct %>%
+                      mutate(new =1) %>% 
+                      pivot_wider(names_from =value, values_from = new,  
+                             values_fill = list(new = 0))
+
+
+## flip sign
+validated_pavs[validated_pavs == 1] <- 2 # so you dont double switch
+
+validated_pavs[validated_pavs == 0] <- 1
+
+validated_pavs[validated_pavs == 2] <- 0
+
+
+validated_pavs <- data.frame(validated_pavs)
+
+
+rownames(validated_pavs) <- validated_pavs$Groups
+
+validated_pavs <- subset(validated_pavs, select = -c(Groups))
+
+str_split_vector <- function(x, string){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- paste(strsplit(item, string)[[1]][1], strsplit(item, string)[[1]][2], sep='')
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+colnames(validated_pavs) <- str_split_vector(colnames(validated_pavs), '_')
+
+names(validated_pavs)[names(validated_pavs) == 'GCA004355905.1'] <- 'NI907'
+
+# add missing rows
+
+missing_ogs <- setdiff(rownames(df),rownames(validated_pavs))
+
+rows_to_add <- data.frame(matrix(ncol = length(colnames(df)), nrow = length(missing_ogs)))
+
+colnames(rows_to_add) <- colnames(df)
+  
+rownames(rows_to_add) <- missing_ogs
+
+rows_to_add[is.na(rows_to_add)] <- 1
+
+validated_pavs <- rbind(validated_pavs, rows_to_add)
+
+
+# sort
+
+validated_pavs <- validated_pavs[order(rownames(validated_pavs)),]
+
+validated_pavs <- validated_pavs[,order(colnames(validated_pavs))]
+
+```
+
+```{r}
+## add the two dataframes together
+
+df <- as.data.frame(as.matrix(validated_pavs) + as.matrix(df))
+
+
+# finally change 2s to 1s, 0 means a gene is really missing
+
+df[df == 2] <- 1
+
+```
+
+```{r}
+
+## DROP NI907 ##
+
+df <- subset(df, select = -c(NI907))
+
+```
+
+
+```{r}
+## write pav matrix
+
+output.file <- file('pav_matrix.txt', "wb") ## to get unix line endings
+
+write.table(df, file = output.file, quote = FALSE, col.names = TRUE, row.names = TRUE)
+
+close(output.file)
+
+```
+
+
+```{r}
+# read in new tree
+
+tree <- read.tree('Single_Copy_Orthologue_Sequences_msas_combined.trimmed.fasttree.rooted.txt')
+
+tree <- drop.tip(tree,tree$tip.label[match("NI907", tree$tip.label)])
+
+```
+
+
+
+```{r}
+
+## node are 91 and 129
+
+lineage_1_node <- 91
+
+descendants <- getDescendants(tree, lineage_1_node)
+
+descendants_lineage_1 <- descendants[descendants <= ncol(df)]
+
+lineage_1_isolates <- tree$tip.label[descendants_lineage_1]
+
+lineage_2_node <- 129
+
+descendants <- getDescendants(tree, lineage_2_node)
+
+descendants_lineage_2 <- descendants[descendants <= ncol(df)]
+
+lineage_2_isolates <- tree$tip.label[descendants_lineage_2]
+
+lineage_info <- data.frame(
+  c(lineage_1_isolates, lineage_2_isolates),
+  c(rep(1, length(lineage_1_isolates)), rep(2, length(lineage_2_isolates)))
+)
+
+colnames(lineage_info) <- c("isolate", "lineage")
+
+output.file <- file('lineage_info.txt', "wb") ## to get unix line endings
+
+write.table(lineage_info, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+
+```
+
+
+
+```{r}
+## write PAV scores per lineage
+
+lineages <- c(1,2)
+
+max_lost <- 2
+min_lost <- 2
+
+for (lineage in lineages) {
+  
+  df_lineage <- subset(df, select = colnames(df)[colnames(df) %in% lineage_info$isolate[lineage_info$lineage == lineage]])
+  
+  df_lineage_pav_scores <- data.frame(rowSums(df_lineage))
+  
+  output.file <- file(paste('pav_scores_per_og_', lineage, '.txt', sep=''), "wb") ## to get unix line endings
+
+  write.table(df_lineage_pav_scores, file = output.file, quote = FALSE, col.names = FALSE, row.names = TRUE)
+  
+  close(output.file)
+  
+  df_lineage_pav_scores[1] <-  df_lineage_pav_scores[1]/max(df_lineage_pav_scores[1])
+  
+  output.file <- file(paste('pav_scores_per_og_proportional', lineage, '.txt', sep=''), "wb") ## to get unix line endings
+
+  write.table(df_lineage_pav_scores, file = output.file, quote = FALSE, col.names = FALSE, row.names = TRUE)
+  
+  close(output.file)
+  
+}
+```
+
+
+```{r}
+
+lineages <- c(1,2)
+
+max_lost <- 2
+min_lost <- 2
+
+for (lineage in lineages) {
+  
+  df_lineage <- subset(df, select = colnames(df)[colnames(df) %in% lineage_info$isolate[lineage_info$lineage == lineage]])
+  
+  # conserved 
+  
+  conserved_ogs <- rownames(df_lineage)[
+    rowSums(df_lineage) > ncol(df_lineage) - min_lost # lost in at least min_lost genomes
+    ] # present in at least max_lost genomes
+  
+  # putative pav
+  putative_pav_ogs <- rownames(df_lineage)[
+    rowSums(df_lineage) <= ncol(df_lineage) - min_lost # lost in at least min_lost genomes
+    & rowSums(df_lineage) >= max_lost] # present in at least max_lost genomes
+  
+  # all (some OGs arent found in the lineage)
+  
+  all_ogs <- rownames(df_lineage)[
+    rowSums(df_lineage) != 0
+  ]
+  
+  #subset tree
+  lineage_tree <- keep.tip(tree, tree$tip.label[match(colnames(df_lineage), tree$tip.label)])
+  
+  # make edges and connections into df
+  tree_edge_df <- data.frame(tree$edge)
+  
+  actual_pav_ogs <- c()
+  
+  
+  for (og in putative_pav_ogs){
+    
+    # subset to just the orthogroup
+    list_ortho <- setNames(as.factor(df_lineage[og,]), colnames(df_lineage))
+    
+    
+    # make df of edges with known connections
+    edge_df <- data.frame(matrix(ncol = 2, nrow = Ntip(tree)))
+    
+    edge_df$X1 <- seq(1, Ntip(tree))
+    
+    edge_df$X2 <- as.character(list_ortho[tree$tip.label])
+    
+    # all edges and their characteristics
+    edges <- unique(tree_edge_df$X1)
+    
+    while (length(edges) != 0 ) { # if any edges are left
+      
+      working_edges <- c()
+      
+      for (edge in edges) {
+        if ( all(tree_edge_df$X2[tree_edge_df$X1 == edge] %in% edge_df$X1) ){ # if their connections have all already been processed
+          working_edges <- c(working_edges, edge) # then process them
+        }
+      }
+      
+      edges <- edges[! edges %in% working_edges]
+      
+      for (edge in working_edges) {
+        connected <- tree_edge_df$X2[tree_edge_df$X1 == edge]
+        values <- edge_df$X2[edge_df$X1 %in% connected]
+        if (length(unique(values)) == 1) {
+          edge_value <- as.character((values[[1]]))
+          edge_df <- edge_df[! edge_df$X1 %in% connected,] # remove edges from dataframe if another higher one is representative
+        } else {
+          edge_value <- 'not_resolved' ## if there is a conflict dont try to resolve it
+        }
+        edge_df[nrow(edge_df) + 1,] = list(edge, edge_value)
+      }
+    }
+    
+    edge_df <- edge_df[edge_df$X2 != 'not_resolved',]
+    
+    if (nrow(edge_df[edge_df$X2 == 0,]) >= min_lost & # absent in at least min_lost clades
+        nrow(edge_df[edge_df$X2 == 1,]) >= max_lost ) {# present in at least max_lost clades
+          actual_pav_ogs <- c(actual_pav_ogs,og)
+        } 
+    
+  }
+  
+  print(length(actual_pav_ogs))
+  
+  print(length(conserved_ogs))
+  
+  print(length(all_ogs))
+  
+  assign(paste("actual_pav_ogs_", lineage, sep = ""), actual_pav_ogs)
+  
+  assign(paste("conserved_ogs_", lineage, sep = ""), conserved_ogs)
+  
+  assign(paste("all_ogs_", lineage, sep = ""), all_ogs)
+  
+}
+
+```
+
+
+```{r}
+
+## write everything
+
+
+output.file <- file('actual_pav_ogs_1.txt', "wb") ## to get unix line endings
+
+write.table(actual_pav_ogs_1, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+output.file <- file('conserved_ogs_1.txt', "wb") ## to get unix line endings
+
+write.table(conserved_ogs_1, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+
+output.file <- file('actual_pav_ogs_2.txt', "wb") ## to get unix line endings
+
+write.table(actual_pav_ogs_2, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+output.file <- file('conserved_ogs_2.txt', "wb") ## to get unix line endings
+
+write.table(conserved_ogs_2, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+output.file <- file('all_ogs_1.txt', "wb") ## to get unix line endings
+
+write.table(all_ogs_1, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+output.file <- file('all_ogs_2.txt', "wb") ## to get unix line endings
+
+write.table(all_ogs_2, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+
+```

@@ -1,0 +1,142 @@
+---
+title: "pav_counts_cross_host"
+output: html_document
+date: '2022-11-11'
+---
+
+```{r}
+library(data.table)
+library(ggplot2)
+```
+
+```{r}
+
+hosts <- c(
+  'Rice Blast',
+  'Wheat Blast'
+)
+
+working_dirs <- c(
+  'pav_newest_gladieux_only_fungap',
+  'pav_newest_wheat_blast_all'
+)
+
+lineages_list <- list(
+  c(2,3),
+  c(1,2)
+)
+
+```
+
+
+
+```{r}
+
+count <- c()
+percentage <- c()
+label <- c()
+category <- c()
+lineage_column <- c()
+host_column <- c()
+
+for (i in seq(from=1,to=2)){
+  working_dir = working_dirs[i]
+  lineages <- unlist(lineages_list[i])
+  host <- hosts[i]
+  
+  for (k in seq(from=1,to=2)){
+    
+    lineage <- lineages[k]
+
+    conserved_file <- paste('../../', working_dir, '/pipeline_methods/conserved_ogs_', lineage, '.txt', sep = '')
+    
+    conserved_ogs <- read.table(conserved_file, header=FALSE, sep='\t')
+    
+    conserved_ogs <- conserved_ogs$V1
+    
+    conserved_ogs_count <- length(conserved_ogs)
+    
+    pav_file <- paste('../../', working_dir, '/pipeline_methods/actual_pav_ogs_', lineage, '.txt', sep = '')
+    
+    pav_ogs <- read.table(pav_file, header=FALSE, sep='\t')
+    
+    pav_ogs <- pav_ogs$V1
+    
+    pav_ogs_count <- length(pav_ogs)
+    
+    all_file <- paste('../../', working_dir, '/pipeline_methods/all_ogs_', lineage, '.txt', sep = '')
+    
+    all_ogs <- read.table(all_file, header=FALSE, sep='\t')
+    
+    all_ogs <- all_ogs$V1
+    
+    all_ogs_count <- length(all_ogs)
+    
+    other_ogs_count <- all_ogs_count - conserved_ogs_count - pav_ogs_count
+    
+    count <- c(count, conserved_ogs_count, pav_ogs_count, other_ogs_count)
+    
+    percentage <- c(percentage,
+                     conserved_ogs_count/all_ogs_count,
+                     pav_ogs_count/all_ogs_count,
+                     other_ogs_count/all_ogs_count)
+    
+    label <- c(label,
+               'Conserved OGs',
+               'PAV OGs',
+               'Other OGs')
+    
+    lineage_column <- c(lineage_column,
+                        rep(lineage,3))
+    
+    host_column <- c(host_column,
+              rep(host,3))
+  }
+}
+
+
+df <- data.frame(count,percentage,label, lineage_column,host_column)
+
+df$lineage_column <- as.character(df$lineage_column)
+
+```
+
+```{r}
+
+label_df <- data.frame(df$percentage, df$count,df$label,df$lineage_column, df$host_column)
+
+colnames(label_df) <- c('percentage','count','label','lineage_column','host_column')
+
+label_df$position <- 0
+
+label_df$position[label_df$label == 'Conserved OGs'] <- label_df$percentage[label_df$label == 'PAV OGs'] +
+                                                    label_df$percentage[label_df$label == 'Other OGs'] +
+                                                    label_df$percentage[label_df$label == 'Conserved OGs']/2
+
+label_df$position[label_df$label == 'PAV OGs'] <- label_df$percentage[label_df$label == 'PAV OGs']/2
+
+label_df$position[label_df$label == 'Other OGs'] <- 1 - label_df$percentage[label_df$label == 'Conserved OGs'] +
+                                                  label_df$percentage[label_df$label == 'Other OGs']/2
+
+label_df <- label_df[label_df$label != "Other OGs",]
+
+```
+
+
+```{r}
+
+p <- ggplot(df, aes(x = lineage_column, fill = label, y = percentage)) +
+  geom_bar(stat = 'identity', position = 'fill')+
+    geom_text(data=label_df, aes(y=position,x=lineage_column,label=count), size=6*0.36)+
+  theme_minimal()+
+  facet_grid(. ~ host_column,scales="free_x")+
+  ylab('Proportion')+
+  xlab('Lineage')+
+    theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=6) , legend.title=element_text(size=8), legend.position = 'left', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
+theme(strip.text.x = element_text(size = 6))+
+  theme(legend.margin=margin(t = 0, unit='mm'))
+
+ggsave('pav_counts_stacked_barplot.pdf', plot = p, width = 6.5/2, height = 4.5/2)
+
+```
+

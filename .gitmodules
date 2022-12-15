@@ -1,6 +1,8 @@
 [submodule "KVK-lab-scripts"]
 	path = KVK-lab-scripts
 	url = https://github.com/pierrj/KVK-lab-scripts
+	branch = master
 [submodule "pav_project_local"]
 	path = pav_project_local
 	url = https://github.com/pierrj/pav_project_local
+	branch = main

@@ -1,0 +1,583 @@
+---
+title: "deletion_distance"
+output: html_document
+date: '2022-11-04'
+---
+
+```{r}
+
+library(ggplot2)
+library(tidyr)
+library(data.table)
+
+```
+
+```{r}
+
+## read in files
+read_locations = function(genome) {
+  df_gene_info <- data.frame(fread('../random_forest/gene_info_for_rf.txt', na.strings = ''))
+
+  colnames(df_gene_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
+                          "enough_space_te", "enough_space_gene",
+                            'any_te',
+                            'DNA',
+                            'DNA/CMC-EnSpm',
+                            'DNA/hAT-Ac',
+                            'DNA/Kolobok-H',
+                            'DNA/MULE-MuDR',
+                            'DNA/Tc-Mar',
+                            'DNA/TcMar-Fot1',
+                            'DNA/TcMar-Pogo',
+                            'LINE/CRE',
+                            'LINE/Penelope',
+                            'LINE/R2-NeSL',
+                            'LINE/Tad1',
+                            'LTR/Copia',
+                            'LTR/Gypsy',
+                            'LTR/Pao',
+                            'LTR/Unknown',
+                            'Unknown',
+                          "gene_nearby",
+                          "lineage_conserved", "lineage_pav", "proportion",
+                          "genome", 'lineage'
+                          )
+  
+  df_gene_info <- subset(df_gene_info, select = c(scaffold, start, end, orientation, id,
+                                                  lineage_conserved, lineage_pav,
+                                                  genome, lineage))
+  
+  df_gene_info <- df_gene_info[df_gene_info$genome == genome,]
+    
+  return(df_gene_info)
+}
+
+## read in comparison pav_genes
+read_comparison_pav_gene = function(genome) {
+  df_gene_info <- data.frame(fread('../random_forest/gene_info_for_rf.txt', na.strings = ''))
+  
+  colnames(df_gene_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
+                            "enough_space_te", "enough_space_gene",
+                              'any_te',
+                              'DNA',
+                              'DNA/CMC-EnSpm',
+                              'DNA/hAT-Ac',
+                              'DNA/Kolobok-H',
+                              'DNA/MULE-MuDR',
+                              'DNA/Tc-Mar',
+                              'DNA/TcMar-Fot1',
+                              'DNA/TcMar-Pogo',
+                              'LINE/CRE',
+                              'LINE/Penelope',
+                              'LINE/R2-NeSL',
+                              'LINE/Tad1',
+                              'LTR/Copia',
+                              'LTR/Gypsy',
+                              'LTR/Pao',
+                              'LTR/Unknown',
+                              'Unknown',
+                            "gene_nearby",
+                            "lineage_conserved", "lineage_pav", "proportion",
+                            "genome", 'lineage'
+                            )
+  
+  df_gene_info <- subset(df_gene_info, select = c(scaffold, start, end, orientation, id,
+                                                  lineage_conserved, lineage_pav,
+                                                  genome, lineage))
+  
+  df_gene_info <- df_gene_info[df_gene_info$genome == genome,]
+  
+  df_gene_info <- df_gene_info[df_gene_info$lineage_pav == TRUE,]
+  
+  return(df_gene_info)
+}
+
+## read in comparison conserved_genes
+read_comparison_conserved_gene = function(genome) {
+  df_gene_info <- data.frame(fread('../random_forest/gene_info_for_rf.txt', na.strings = ''))
+  
+  colnames(df_gene_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
+                            "enough_space_te", "enough_space_gene",
+                              'any_te',
+                              'DNA',
+                              'DNA/CMC-EnSpm',
+                              'DNA/hAT-Ac',
+                              'DNA/Kolobok-H',
+                              'DNA/MULE-MuDR',
+                              'DNA/Tc-Mar',
+                              'DNA/TcMar-Fot1',
+                              'DNA/TcMar-Pogo',
+                              'LINE/CRE',
+                              'LINE/Penelope',
+                              'LINE/R2-NeSL',
+                              'LINE/Tad1',
+                              'LTR/Copia',
+                              'LTR/Gypsy',
+                              'LTR/Pao',
+                              'LTR/Unknown',
+                              'Unknown',
+                            "gene_nearby",
+                            "lineage_conserved", "lineage_pav", "proportion",
+                            "genome", 'lineage'
+                            )
+  
+  df_gene_info <- subset(df_gene_info, select = c(scaffold, start, end, orientation, id,
+                                                  lineage_conserved, lineage_pav,
+                                                  genome, lineage))
+  
+  df_gene_info <- df_gene_info[df_gene_info$genome == genome,]
+  
+  df_gene_info <- df_gene_info[df_gene_info$lineage_conserved == TRUE,]
+  
+  return(df_gene_info)
+}
+
+element_distance = function(x, output, subset_per_scaffold) {
+  scaffold = x['scaffold']
+  start = as.numeric(x['start'])
+  end = as.numeric(x['end'])
+  id = as.character(x['id'])
+  orientation = as.character(x['orientation'])
+  
+  nearby_upstream = subset_per_scaffold[subset_per_scaffold$end < start
+                      & subset_per_scaffold$id != id,] ## make sure you dont match to the same gene each time
+  
+  if (dim(nearby_upstream)[1] != 0){ # if not empty
+     upstream_distance = abs(max(nearby_upstream$end) - start)
+     }else {
+       upstream_distance = NA
+     }
+  
+  nearby_downstream = subset_per_scaffold[subset_per_scaffold$start > end
+                      & subset_per_scaffold$id != id,] ## make sure you dont match to the same gene each time
+  
+  if (dim(nearby_downstream)[1] != 0){ # if not empty
+    downstream_distance = abs(min(nearby_downstream$start) - end)
+    } else {
+       downstream_distance = NA
+    }
+  
+  if (orientation == "-") { ## these are swapped if the orientation is backwards
+    downstream_distance_old = downstream_distance
+    upstream_distance_old = upstream_distance
+    upstream_distance = downstream_distance_old
+    downstream_distance = upstream_distance_old
+  }
+  
+  if (output == "downstream"){
+    return(downstream_distance)
+  } else if (output == "upstream") {
+    return(upstream_distance)
+  } else if (output == "closest") {
+    if (is.na(downstream_distance) & is.na(upstream_distance)){
+      return(NA)
+    } else {
+    return(min(downstream_distance,upstream_distance,na.rm=TRUE))
+    }
+  }
+}
+
+read_chromsizes = function(genome) {
+  chromsizes_file = paste("../random_forest/chrom_sizes/",genome,"_genomic.fna.chromsizes", sep='')
+  
+  chromsizes <- read.table(chromsizes_file,header=FALSE,sep='\t')
+  
+  colnames(chromsizes) <- c('scaffold','size')
+  
+  return(chromsizes)
+}
+
+## check if there is enough space around the gene to call
+enough_space = function(x, distance,chromsizes) {
+  scaffold = x['scaffold']
+  start = as.numeric(x['start'])
+  end = as.numeric(x['end'])
+  scaffold_size = chromsizes$size[chromsizes$scaffold==scaffold]
+  if (start >= distance | end <= (scaffold_size - distance)){ ## check if there are enough sequenced base pairs to call a FALSE on at least one side
+      return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+ 
+nearby_element = function(x, class, distance, enough_space_column, subset_per_scaffold) {
+  scaffold = x['scaffold']
+  start = as.numeric(x['start'])
+  end = as.numeric(x['end'])
+  enough_space = x[[enough_space_column]]
+  id = x['id']
+  nearby_elements = subset_per_scaffold[subset_per_scaffold$end >= start - distance
+                      & subset_per_scaffold$start <= end + distance
+                      & subset_per_scaffold$id != id,] ## make sure you dont match to the same gene each time
+  if (dim(nearby_elements)[1] == 0){ # if empty
+    if (enough_space == TRUE){ ## check if there are enough sequenced base pairs to call a FALSE
+      return(FALSE)
+    } else {
+      return(NA) ## otherwise we dont know
+    }
+  } else{
+    return(TRUE)
+  }
+}
+
+```
+
+
+```{r}
+
+## read in ogs
+df_ogs <- data.frame(fread('../pipeline_methods/Orthogroups.tsv', na.strings = ''))
+
+rownames(df_ogs) <- df_ogs$Orthogroup
+
+df_ogs <- subset(df_ogs, select = -c(Orthogroup))
+
+## change names to match lineage info spreadsheet
+
+str_split_vector <- function(x, string){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- strsplit(item, string)[[1]][1]
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+
+# fix col names
+colnames(df_ogs) <- str_split_vector(colnames(df_ogs), '_')
+
+```
+
+
+```{r}
+
+full_names <- c(
+'GCA_002218425.1_Py22.1',
+'GCA_905114705.1_Assembly_of_M.oryzae_isolate_NG0104_genome',
+'GCA_905109895.1_Assembly_of_M.oryzae_isolate_Glhn4_genome',
+'GCA_905109835.1_Assembly_of_M.oryzae_isolate_KE017_genome',
+'GCA_905109825.1_Assembly_of_M.oryzae_isolate_BTGP_6_g_genome',
+'GCA_905105115.1_Assembly_of_M.oryzae_isolate_90_4_1_genome',
+'GCA_002218465.1_ASM221846v1',
+'GCA_905232145.1_Assembly_of_M.oryzae_isolate_VO108_genome',
+'GCA_905067025.2_AG006_contigs_polished',
+'GCA_905109115.1_Assembly_of_M.oryzae_isolate_BTBaB1_genome',
+'GCA_905186795.1_Assembly_of_M.oryzae_isolate_BTMP_S_13_2_genome',
+'GCA_900474545.3_BR32_genome_polished_no_mito',
+'GCA_905114785.1_Assembly_of_M.oryzae_isolate_VO104_genome',
+'GCA_905109845.1_Assembly_of_M.oryzae_isolate_BTJP_4_15_genome',
+'GCA_905109135.1_Assembly_of_M.oryzae_isolate_BTAR_A1_genome',
+'GCA_002925425.1_ASM292542v1',
+'GCA_905114655.1_Assembly_of_M.oryzae_isolate_KE332_genome',
+'GCA_905109125.1_Assembly_of_M.oryzae_isolate_BTBa_2_genome',
+'GCA_905105095.1_Assembly_of_M.oryzae_isolate_BF48_genome',
+'GCA_905114085.1_Assembly_of_M.oryzae_isolate_KE029_genome',
+'GCA_905114815.1_Assembly_of_M.oryzae_isolate_BTGP_6_f_genome',
+'GCA_002218435.1_ASM221843v1',
+'GCA_004785725.2_ASM478572v2',
+'GCA_905109905.1_Assembly_of_M.oryzae_isolate_EG308_genome',
+'GCA_905109105.1_Assembly_of_M.oryzae_isolate_BTJP4_11_genome',
+'GCA_900474175.3_US71_genome_polished_no_mito',
+'GCA_905067055.2_AG032_contigs_polished',
+'GCA_905109085.1_Assembly_of_M.oryzae_isolate_BTGP1_b_genome',
+'GCA_905109785.1_Assembly_of_M.oryzae_isolate_BTJP4_3_genome',
+'GCA_905109755.1_Assembly_of_M.oryzae_isolate_BTJP_4_2_genome',
+'GCA_012490805.1_ASM1249080v1',
+'GCA_905109765.1_Assembly_of_M.oryzae_isolate_Glhn3_genome',
+'GCA_905109885.1_Assembly_of_M.oryzae_isolate_KE021_genome',
+'GCA_905114755.1_Assembly_of_M.oryzae_isolate_TG004_genome',
+'GCA_012490815.1_ASM1249081v1',
+'GCA_905114665.1_Assembly_of_M.oryzae_isolate_KE415_genome',
+'GCA_905114695.1_Assembly_of_M.oryzae_isolate_KE473_genome',
+'GCA_905114765.1_Assembly_of_M.oryzae_isolate_TZ090_genome',
+'GCA_905109865.1_Assembly_of_M.oryzae_isolate_JUM1_genome',
+'GCA_905105125.1_Assembly_of_M.oryzae_isolate_BF5_genome',
+'GCA_905067015.2_AG098_contigs_polished',
+'GCA_905114645.1_Assembly_of_M.oryzae_isolate_KE255_genome',
+'GCA_905114795.1_Assembly_of_M.oryzae_isolate_VO113_genome',
+'GCA_001675615.1_ASM167561v1',
+'GCA_905105105.1_Assembly_of_M.oryzae_isolate_BF17_genome',
+'GCA_905109815.1_Assembly_of_M.oryzae_isolate_BTMP_S13_1_genome',
+'GCA_905114775.1_Assembly_of_M.oryzae_isolate_UG08_genome',
+'GCA_905105085.1_Assembly_of_M.oryzae_isolate_BF32_genome',
+'GCA_905109745.1_Assembly_of_M.oryzae_isolate_BTJP4_6_genome',
+'GCA_905114095.1_Assembly_of_M.oryzae_isolate_KE041_genome',
+'GCA_900474475.3_CD156_genome_polished_no_mito',
+'GCA_905125185.1_Assembly_of_M.oryzae_isolate_KE002_genome',
+'GCA_905114675.1_Assembly_of_M.oryzae_isolate_KE443_genome',
+'GCA_012979135.1_ASM1297913v1',
+'GCA_002925345.1_ASM292534v1',
+'GCA_905105065.1_Assembly_of_M.oryzae_isolate_82_0835_genome',
+'GCA_002924665.1_ASM292466v1',
+'GCA_905104965.1_Assembly_of_M.oryzae_isolate_BN0293_genome',
+'GCA_905081835.1_Assembly_of_M.oryzae_isolate_76_3_genome',
+'GCA_905109925.1_Assembly_of_M.oryzae_isolate_BTTrp_5_genome',
+'GCA_905109245.1_Assembly_of_M.oryzae_isolate_BTJP4_16_genome',
+'GCA_905109095.1_Assembly_of_M.oryzae_isolate_BTJP4_12_genome',
+'GCA_905067035.2_AG039_contigs_polished',
+'GCA_001675605.1_ASM167560v1',
+'GCA_002924685.1_ASM292468v1',
+'GCA_905114805.1_Assembly_of_M.oryzae_isolate_BTGP_6_e_genome',
+'GCA_905109485.1_Assembly_of_M.oryzae_isolate_BTJP4_18_genome',
+'GCA_002925325.1_ASM292532v1',
+'GCA_905114725.1_Assembly_of_M.oryzae_isolate_NG0135_genome',
+'GCA_905066965.2_AG059_contigs_polished',
+'GCA_905067005.2_AG038_contigs_polished',
+'GCA_905109775.1_Assembly_of_M.oryzae_isolate_BTTrp_6_genome',
+'GCA_001675625.1_ASM167562v1',
+'GCA_905109915.1_Assembly_of_M.oryzae_isolate_BTJP_4_9_genome',
+'GCA_002925335.1_ASM292533v1',
+'GCA_905109805.1_Assembly_of_M.oryzae_isolate_KE019_genome',
+'GCA_905067085.2_SAndrea_contigs_polished',
+'GCA_905114735.1_Assembly_of_M.oryzae_isolate_NG0153_genome',
+'GCA_001675595.1_ASM167559v1',
+'GCA_905114685.1_Assembly_of_M.oryzae_isolate_KE491_genome',
+'GCA_900474655.3_FR13_genome_polished_no_mito',
+'GCA_905114715.1_Assembly_of_M.oryzae_isolate_NG0110_genome',
+'GCA_002924745.1_ASM292474v1',
+'GCA_905186785.1_Assembly_of_M.oryzae_isolate_BTJP4_5_genome',
+'GCA_905125175.1_Assembly_of_M.oryzae_isolate_BTJP_4_1_genome',
+'GCA_905109875.1_Assembly_of_M.oryzae_isolate_KE016_genome',
+'GCA_905114825.1_Assembly_of_M.oryzae_isolate_BTGP_6_h_genome',
+'GCA_905067045.2_AG002_contigs_polished'
+)
+
+```
+
+## TEST ##
+
+```{r}
+
+genome <- "GCA905067045.2"
+
+genome_full_name <- full_names[grep(substr(genome,4, nchar(genome)), full_names)]
+
+locations <- read_locations(genome)
+comparison_pav <- read_comparison_pav_gene(genome)
+comparison_conserved <- read_comparison_conserved_gene(genome)
+
+# sort by scaffold
+locations = locations[order(locations$scaffold),]
+
+outputs = c("upstream", "downstream", "closest")
+
+for (comparison_string in c('pav', 'conserved')){
+  
+  if (comparison_string == 'pav'){
+    comparison <- comparison_pav
+  } else if (comparison_string == 'conserved'){
+    comparison <- comparison_conserved
+  }
+  
+  for (output in outputs){
+    distance_column = c()
+    for (scaffold in unique(locations$scaffold)){
+      locations_per_scaffold = locations[locations$scaffold == scaffold,]
+      subset_per_scaffold = comparison[comparison$scaffold == scaffold,]
+      distance_column = c(distance_column, apply(locations_per_scaffold,1,
+                                                 element_distance,
+                                                 output=output,
+                                                 subset_per_scaffold=subset_per_scaffold))
+    }
+    locations[paste(comparison_string,"_gene_distance_", output, sep='')] = distance_column
+  }
+}
+
+```
+
+
+```{r}
+
+chromsizes <- read_chromsizes(genome_full_name)
+
+distance_pav_min = 1000
+
+locations$enough_space_pav = apply(locations,1,enough_space,distance=distance_pav_min,chromsizes=chromsizes)
+
+distance_conserved_min = 1000
+
+locations$enough_space_conserved = apply(locations,1,enough_space,distance=distance_conserved_min,chromsizes=chromsizes)
+
+for (comparison_string in c('pav', 'conserved')){
+  
+  if (comparison_string == 'pav'){
+    comparison <- comparison_pav
+  } else if (comparison_string == 'conserved'){
+    comparison <- comparison_conserved
+  }
+  
+  if (comparison_string == 'pav'){
+    distance <- distance_pav_min
+  } else if (comparison_string == 'conserved'){
+    distance <- distance_conserved_min
+  }
+  
+  if (comparison_string == 'pav'){
+    enough_space_column <- 'enough_space_pav'
+  } else if (comparison_string == 'conserved'){
+    enough_space_column <- 'enough_space_conserved'
+  }
+  
+  column = c()
+
+  for (scaffold in unique(locations$scaffold)){
+    locations_per_scaffold = locations[locations$scaffold == scaffold,]
+    subset_per_scaffold = comparison[comparison$scaffold == scaffold,]
+    # there will always be at least one gene...
+    column = c(column, apply(locations_per_scaffold,1,nearby_element,
+                                     subset_per_scaffold=subset_per_scaffold,
+                                     distance=distance,
+                                     enough_space_column=enough_space_column))
+  }
+  
+  locations[paste(comparison_string, '_nearby', sep='')] = column
+}
+
+```
+
+## FULL RUN ##
+
+```{r}
+
+df_deletion_info <- data.frame(matrix(ncol = 19, nrow = 0))
+
+colnames(df_deletion_info) <- c("scaffold", "start", "end", "orientation", "id",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage",
+                            'pav_gene_distance_upstream', 'pav_gene_distance_downstream', 'pav_gene_distance_closest',
+                            'conserved_gene_distance_upstream', 'conserved_gene_distance_downstream', 'conserved_gene_distance_closest',
+                            'enough_space_pav', 'enough_space_conserved',
+                            'pav_nearby', 'conserved_nearby'
+                            )
+
+df_gene_info <- data.frame(fread('../random_forest/gene_info_for_rf.txt', na.strings = ''))
+
+colnames(df_gene_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
+                        "enough_space_te", "enough_space_gene",
+                          'any_te',
+                          'DNA',
+                          'DNA/CMC-EnSpm',
+                          'DNA/hAT-Ac',
+                          'DNA/Kolobok-H',
+                          'DNA/MULE-MuDR',
+                          'DNA/Tc-Mar',
+                          'DNA/TcMar-Fot1',
+                          'DNA/TcMar-Pogo',
+                          'LINE/CRE',
+                          'LINE/Penelope',
+                          'LINE/R2-NeSL',
+                          'LINE/Tad1',
+                          'LTR/Copia',
+                          'LTR/Gypsy',
+                          'LTR/Pao',
+                          'LTR/Unknown',
+                          'Unknown',
+                        "gene_nearby",
+                        "lineage_conserved", "lineage_pav", "proportion",
+                        "genome", 'lineage'
+                        )
+
+genomes <- unique(df_gene_info$genome)
+
+rm(df_gene_info)
+
+for (genome in genomes){
+  
+  print(genome)
+  
+  genome_full_name <- full_names[grep(substr(genome,4, nchar(genome)), full_names)]
+  
+  locations <- read_locations(genome)
+  comparison_pav <- read_comparison_pav_gene(genome)
+  comparison_conserved <- read_comparison_conserved_gene(genome)
+  
+  # sort by scaffold
+  locations = locations[order(locations$scaffold),]
+  
+  outputs = c("upstream", "downstream", "closest")
+  
+  for (comparison_string in c('pav', 'conserved')){
+    
+    if (comparison_string == 'pav'){
+      comparison <- comparison_pav
+    } else if (comparison_string == 'conserved'){
+      comparison <- comparison_conserved
+    }
+    
+    for (output in outputs){
+      distance_column = c()
+      for (scaffold in unique(locations$scaffold)){
+        locations_per_scaffold = locations[locations$scaffold == scaffold,]
+        subset_per_scaffold = comparison[comparison$scaffold == scaffold,]
+        distance_column = c(distance_column, apply(locations_per_scaffold,1,
+                                                   element_distance,
+                                                   output=output,
+                                                   subset_per_scaffold=subset_per_scaffold))
+      }
+      locations[paste(comparison_string,"_gene_distance_", output, sep='')] = distance_column
+    }
+  }
+  
+  chromsizes <- read_chromsizes(genome_full_name)
+  
+  distance_pav_min = 1000
+  
+  locations$enough_space_pav = apply(locations,1,enough_space,distance=distance_pav_min,chromsizes=chromsizes)
+  
+  distance_conserved_min = 1000
+  
+  locations$enough_space_conserved = apply(locations,1,enough_space,distance=distance_conserved_min,chromsizes=chromsizes)
+  
+  for (comparison_string in c('pav', 'conserved')){
+    
+    if (comparison_string == 'pav'){
+      comparison <- comparison_pav
+    } else if (comparison_string == 'conserved'){
+      comparison <- comparison_conserved
+    }
+    
+    if (comparison_string == 'pav'){
+      distance <- distance_pav_min
+    } else if (comparison_string == 'conserved'){
+      distance <- distance_conserved_min
+    }
+    
+    if (comparison_string == 'pav'){
+      enough_space_column <- 'enough_space_pav'
+    } else if (comparison_string == 'conserved'){
+      enough_space_column <- 'enough_space_conserved'
+    }
+    
+    column = c()
+  
+    for (scaffold in unique(locations$scaffold)){
+      locations_per_scaffold = locations[locations$scaffold == scaffold,]
+      subset_per_scaffold = comparison[comparison$scaffold == scaffold,]
+      # there will always be at least one gene...
+      column = c(column, apply(locations_per_scaffold,1,nearby_element,
+                                       subset_per_scaffold=subset_per_scaffold,
+                                       distance=distance,
+                                       enough_space_column=enough_space_column))
+    }
+    
+    locations[paste(comparison_string, '_nearby', sep='')] = column
+  }
+
+  locations <- locations[,colnames(df_deletion_info)]
+
+  df_deletion_info <- rbind(df_deletion_info, locations)
+  
+}
+
+```
+
+```{r}
+
+output.file <- file('gene_deletion_distance_info.txt', "wb") ## to get unix line endings
+
+write.table(df_deletion_info, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+```

@@ -1,0 +1,124 @@
+---
+title: "profile_plots"
+output: html_document
+date: '2022-10-12'
+---
+
+```{r}
+library(data.table)
+library(ggplot2)
+library(ggpubr)
+
+```
+
+```{r}
+# read in tab output from plot profile
+
+hosts <- c(
+  'rice',
+  'wheat'
+)
+
+paths <- c(
+  '../../pav_newest_gladieux_only_fungap/sv_callers/',
+  '../../pav_newest_wheat_blast_all/sv_callers/'
+)
+
+regions_bed <- c(
+  'all_DEL.bed',
+  'gene_DEL.bed',
+  'te_DEL.bed',
+  'shuffled_DEL.bed',
+  'all_genes.bed',
+  'all_tes.bed'
+)
+
+regions <- c(
+  'All Deletions',
+  'Gene-containing Deletions',
+  'TE-containing Deletions',
+  'Random',
+  'All Genes',
+  'All TEs'
+)
+
+treatment_file_endings <- c(
+  '_genes.tab',
+  '_tes.tab'
+)
+
+outputs <- c(
+  'plot_profile_allregiontypes_genes.pdf',
+  'plot_profile_allregiontypes_tes.pdf'
+)
+
+labels <- c(
+  "Number of Genes",
+  "Number of TEs"
+)
+
+for (l in seq(from=1,to=length(hosts))){
+  host = hosts[l]
+  path = paths[l]
+  
+  count = length(treatment_file_endings)
+  
+  for (i in seq(from = 1, to = count)){
+  
+    treatment_file_ending = treatment_file_endings[i]
+    
+    output = outputs[i]
+    
+    label = labels[i]
+    
+    df <- data.frame(matrix(ncol = 3, nrow = 0))
+  
+    colnames(df) <- c("bin","val","label")
+    
+    for (k in seq(from = 1, to = length(regions_bed))){
+      
+      region_bed = regions_bed[k]
+      region = regions[k]
+      
+      file = paste(path, 'plot_profile_', region_bed, treatment_file_ending,sep='')
+      
+      df_read <- t(data.frame(fread(file)))
+      
+      ## need to do a lot of rearranging to get it into a format that works for ggplot
+      df_temp <- data.frame( bin=as.vector(df_read[3:nrow(df_read),1]),
+                        val=c(df_read[3:nrow(df_read),2]),
+                        label=c(rep(region,nrow(df_read)-2)))
+      
+      df_temp$bin <- as.numeric(as.character(df_temp$bin))
+      df_temp$val <- as.numeric(as.character(df_temp$val))
+    
+      df <- rbind(df, df_temp)
+      }
+    
+    p <- ggplot(df, aes(x=bin, y=val, group=label)) + geom_line(aes(color=label), lwd=0.5) + theme_classic() +
+          scale_x_continuous(labels=c('-5kbp', 'Start', 'End', '+5kbp'), breaks=c(1,500,750,1250)) + xlab('')+
+          theme(axis.text=element_text(size=6), axis.title=element_text(size=6), legend.title=element_blank(), legend.text=element_text(size=8)) +                ylab(label)+
+          theme(legend.position="none")
+        
+    ggsave(paste(host, '_', output,sep=''), plot=p, width=6.5/2, height=3/2)
+    
+  }
+  
+}
+
+
+
+```
+
+```{r}
+
+p <- ggplot(df, aes(x=bin, y=val, group=label)) + geom_line(aes(color=label), lwd=0.5) + theme_classic() +
+      scale_x_continuous(labels=c('-0.5kb', 'Breakpoint', '0.5kb'), breaks=c(1,51,101)) + xlab('')+
+      theme(axis.text=element_text(size=6), axis.title=element_text(size=8), legend.title=element_blank(), legend.text=element_text(size=6)) +          ylab(label)+guides(color=guide_legend(ncol=6))
+
+leg <- get_legend(p)
+my_legend <- as_ggplot(leg)
+ggsave('legend_abstract.pdf', plot = leg, width = 6.5, height = 0.25)
+
+```
+

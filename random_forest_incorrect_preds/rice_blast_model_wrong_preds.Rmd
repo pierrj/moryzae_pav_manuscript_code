@@ -1,0 +1,161 @@
+---
+title: "rice_blast_model_wrong_preds"
+output: html_document
+date: '2022-11-11'
+---
+
+```{r}
+
+library(ggplot2)
+library(tidyr)
+library(data.table)
+library(ggnewscale)
+
+```
+
+
+```{r}
+
+df <-data.frame(fread('cross_host_rice_first_input_df2_with_predictions.txt'))
+
+
+genes_tp <- df$id[df$lineage_pav == TRUE & df$predicted_lineage_pav == TRUE]
+  
+genes_fn <- df$id[df$lineage_pav == TRUE & df$predicted_lineage_pav == FALSE]
+
+df_model_errors <- data.frame(c(genes_tp, genes_fn),
+                              c(rep("True Positives", length(genes_tp)), rep("False Negatives",length(genes_fn))))
+
+colnames(df_model_errors) <- c('id', 'model_result')
+
+
+df_distance_info <-data.frame(fread(
+  '../../pav_newest_wheat_blast_all/deletion_statistics/gene_deletion_distance_info.txt'))
+
+colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage",
+                            'pav_gene_distance_upstream', 'pav_gene_distance_downstream', 'pav_gene_distance_closest',
+                            'conserved_gene_distance_upstream', 'conserved_gene_distance_downstream', 'conserved_gene_distance_closest',
+                            'enough_space_pav', 'enough_space_conserved',
+                            'pav_nearby', 'conserved_nearby'
+                            )
+
+df_model_errors <- merge(df_model_errors, df_distance_info, by = "id", all.x = TRUE)
+
+df_model_errors <- subset(df_model_errors, select = c(id, model_result, pav_gene_distance_upstream, pav_gene_distance_downstream))
+
+df_model_errors$pav_gene_distance_downstream <- log10(df_model_errors$pav_gene_distance_downstream)
+
+df_model_errors$pav_gene_distance_upstream <- log10(df_model_errors$pav_gene_distance_upstream)
+
+colnames(df_model_errors) <- c('id', 'model_results', 'distance_up', 'distance_down')
+
+df_model_errors <- na.omit(df_model_errors)
+
+df <- df_model_errors
+
+```
+
+
+```{r}
+
+axis_label = 'PAV Gene'
+
+p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
+  stat_density_2d(data = ~ subset(., model_results=="True Positives"),aes(fill = ..level..), geom = "polygon") + # 2d density
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  new_scale_fill() +
+  stat_density_2d(data = ~ subset(., model_results=="False Negatives"),aes(fill = ..level..), geom = "polygon") + # 2d density
+  scale_fill_distiller(palette = "Oranges", direction = 1) +
+  new_scale_fill() +
+  scale_x_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) + # logticks
+  scale_y_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) +
+  xlab(paste("5' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
+  ylab(paste("3' Distance to \nnearest ", axis_label, " (kbp)", sep ='')) +
+  facet_grid(. ~ model_results)+
+  ggtitle("Trained on Rice Blast, Tested on Wheat Blast")+
+  theme_classic()+
+    theme(axis.text=element_text(size=6), plot.title=element_text(size=6,hjust=0.5), axis.title=element_text(size=6), 
+      legend.text=element_text(size=6),strip.text = element_text(size=6))+
+  theme( strip.background = element_blank())+
+  theme(legend.position="none")
+
+ggsave(paste("facetgrid_model_error_rice_first_3D.pdf",sep = ''), device = "pdf", plot = p, width = 6.5/2, height = 1.5)
+
+  
+```
+
+
+```{r}
+
+df <-data.frame(fread('cross_host_wheat_first_input_df2_with_predictions.txt'))
+
+
+genes_tp <- df$id[df$lineage_pav == TRUE & df$predicted_lineage_pav == TRUE]
+  
+genes_fp <- df$id[df$lineage_pav == FALSE & df$predicted_lineage_pav == TRUE]
+
+df_model_errors <- data.frame(c(genes_tp, genes_fp),
+                              c(rep("True Positives", length(genes_tp)), rep("False Positives",length(genes_fp))))
+
+colnames(df_model_errors) <- c('id', 'model_result')
+
+
+df_distance_info <-data.frame(fread(
+  '../../pav_newest_gladieux_only_fungap/deletion_statistics/gene_deletion_distance_info.txt'))
+
+colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage",
+                            'pav_gene_distance_upstream', 'pav_gene_distance_downstream', 'pav_gene_distance_closest',
+                            'conserved_gene_distance_upstream', 'conserved_gene_distance_downstream', 'conserved_gene_distance_closest',
+                            'enough_space_pav', 'enough_space_conserved',
+                            'pav_nearby', 'conserved_nearby'
+                            )
+
+df_model_errors <- merge(df_model_errors, df_distance_info, by = "id", all.x = TRUE)
+
+df_model_errors <- subset(df_model_errors, select = c(id, model_result, pav_gene_distance_upstream, pav_gene_distance_downstream))
+
+df_model_errors$pav_gene_distance_downstream <- log10(df_model_errors$pav_gene_distance_downstream)
+
+df_model_errors$pav_gene_distance_upstream <- log10(df_model_errors$pav_gene_distance_upstream)
+
+colnames(df_model_errors) <- c('id', 'model_results', 'distance_up', 'distance_down')
+
+df_model_errors <- na.omit(df_model_errors)
+
+df <- df_model_errors
+
+```
+
+```{r}
+
+axis_label = 'PAV Gene'
+
+p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
+  stat_density_2d(data = ~ subset(., model_results=="True Positives"),aes(fill = ..level..), geom = "polygon") + # 2d density
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  new_scale_fill() +
+  stat_density_2d(data = ~ subset(., model_results=="False Positives"),aes(fill = ..level..), geom = "polygon") + # 2d density
+  scale_fill_distiller(palette = "Oranges", direction = 1) +
+  new_scale_fill() +
+  scale_x_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) + # logticks
+  scale_y_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) +
+  xlab(paste("5' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
+  ylab(paste("3' Distance to \nnearest ", axis_label, " (kbp)", sep ='')) +
+  facet_grid(. ~ model_results)+
+  ggtitle("Trained on Wheat Blast, Tested on Rice Blast")+
+  theme_classic()+
+    theme(axis.text=element_text(size=6), plot.title=element_text(size=6,hjust=0.5), axis.title=element_text(size=6), 
+      legend.text=element_text(size=6),strip.text = element_text(size=6))+
+  theme( strip.background = element_blank())+
+  theme(legend.position="none")
+
+ggsave(paste("facetgrid_model_error_wheat_first_3D.pdf",sep = ''), device = "pdf", plot = p, width = 6.5/2, height = 1.5)
+
+  
+```
+
+

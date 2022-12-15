@@ -1,0 +1,349 @@
+---
+title: "pav_pca"
+output: html_document
+---
+
+```{r}
+library(ggbiplot)
+library(phytools)
+library(ape)
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(factoextra)
+library(FactoMineR)
+```
+
+```{r}
+## read in PAV matrix
+df <- data.frame(fread('../../pipeline_methods/pav_matrix.txt', na.strings = ''), row.names =1)
+
+colnames(df)[startsWith(colnames(df),'X')] <- gsub('X', '', colnames(df)[startsWith(colnames(df),'X')])
+
+colnames(df) <- gsub('\\.', '-', colnames(df))
+
+## drop NI907
+
+df <- subset(df, select = -c(NI907))
+
+```
+
+
+```{r}
+## read in lineage info
+
+assembly_stats <- data.frame(fread('../../pipeline_methods/gladieux_et_al_assembly_stats.txt', na.strings = ''))
+
+lineage_info <- subset(assembly_stats, select = c(V1, V3, V4))
+
+colnames(lineage_info) <- c('isolate', 'lineage', 'sublineage')
+
+lineage_info[lineage_info$isolate == 'WD-3-1_1',]$isolate <- 'WD-3-1'
+
+## drop lineage 1
+
+df <- df[, (! colnames(df) %in% lineage_info$isolate[lineage_info$lineage == 1]) ]
+
+lineage_info <- lineage_info[lineage_info$lineage != 1,]
+
+```
+
+```{r}
+# read in new tree
+
+tree <- read.tree('../../pipeline_methods/Single_Copy_Orthologue_Sequences_msas_combined.trimmed.fasttree.rooted.txt')
+
+# prune NI907
+
+tree <- drop.tip(tree,tree$tip.label[match("NI907", tree$tip.label)])
+
+str_split_vector <- function(x, string){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- strsplit(item, string)[[1]][1]
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+tree$tip.label <- str_split_vector(tree$tip.label, '_')
+
+```
+
+
+
+```{r}
+## get effectors
+
+effector_ogs <- data.frame(fread('../../pipeline_methods/effector_orthogroups.txt', header = FALSE))
+
+effector_ogs <- effector_ogs$V1
+
+df_effectors <- df[rownames(df) %in% effector_ogs,]
+
+
+## subset to effectors that arent in all genomes or are found in at least one genome since this doesnt work for PCA
+
+df_effectors <- df_effectors[rowSums(df_effectors) != ncol(df_effectors),]
+df_effectors <- df_effectors[rowSums(df_effectors) != 0,]
+
+## need to transpose for prcomp
+
+df_effectors <- as.data.frame(t(as.matrix(df_effectors)))
+
+## regular PCA with just effectors
+
+effectors_pca <- prcomp(df_effectors,scale = TRUE)
+
+```
+
+
+```{r}
+
+pca <- effectors_pca
+title <- "Effector Orthogroups"
+pdf <- 'pc1_pc2_effectors.pdf'
+xlab <- 'PC1 (11.0% Variance)'
+ylab <- 'PC2 (7.8% Variance)'
+xlim <- c(-3,3)
+ylim <- c(-6,1)
+
+pdf(pdf, width = 6.5/2, height = 2.5)
+
+p <- ggbiplot(pca, var.axes = F, 
+     groups = as.factor(lineage_info$lineage),
+     choices = c(1,2)) + xlim(xlim) + ylim(ylim) + xlab(xlab) + ylab(ylab)+
+  theme(legend.position="none")+ggtitle(title)+
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(p)
+
+dev.off()
+
+
+```
+
+
+```{r}
+
+## follow up analysis
+
+pca <- effectors_pca
+pc <- 1
+contrib_cutoff <- 0.1
+
+# number of genes with contributions greater than contrib_cutoff
+length(get_pca_var(pca)$contrib[,pc][get_pca_var(pca)$contrib[,pc] > contrib_cutoff])
+
+# sum of percentage made up of pc by these genes
+sum(get_pca_var(pca)$contrib[,pc][get_pca_var(pca)$contrib[,pc] > contrib_cutoff])
+
+```
+
+```{r}
+## now all genes PCA
+
+## remove invariable rows
+df <- df[rowSums(df) != ncol(df),]
+df <- df[rowSums(df) != 0,]
+
+
+## need to transpose for prcomp
+
+df <- as.data.frame(t(as.matrix(df)))
+
+## regular PCA
+
+all_pca <- prcomp(df,scale = TRUE)
+
+```
+
+```{r}
+pca <- all_pca
+title <- "All Orthogroups"
+pdf <- 'pc1_pc2_all_genes.pdf'
+xlab <- 'PC1 (10.4% Variance)'
+ylab <- 'PC2 (5.8% Variance)'
+xlim <- c(-3,3)
+ylim <- c(-1,6)
+
+pdf(pdf, width = 6.5/2, height = 2.5)
+
+p <- ggbiplot(pca, var.axes = F, 
+     groups = as.factor(lineage_info$lineage),
+     choices = c(1,2)) + xlim(xlim) + ylim(ylim) + xlab(xlab) + ylab(ylab)+theme(legend.position="none")+ggtitle(title)+
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(p)
+
+dev.off()
+
+```
+
+```{r}
+## follow up analysis
+
+pc <- 1
+contrib_cutoff <- 0.1
+
+# number of genes with contributions greater than contrib_cutoff
+length(get_pca_var(all_pca)$contrib[,pc][get_pca_var(all_pca)$contrib[,pc] > contrib_cutoff])
+
+# sum of percentage made up of pc by these genes
+sum(get_pca_var(all_pca)$contrib[,pc][get_pca_var(all_pca)$contrib[,pc] > contrib_cutoff])
+
+pc <- 2
+contrib_cutoff <- 0.1
+
+# number of genes with contributions greater than contrib_cutoff
+length(get_pca_var(all_pca)$contrib[,pc][get_pca_var(all_pca)$contrib[,pc] > contrib_cutoff])
+
+# sum of percentage made up of pc by these genes
+sum(get_pca_var(all_pca)$contrib[,pc][get_pca_var(all_pca)$contrib[,pc] > contrib_cutoff])
+
+
+```
+
+```{r}
+
+
+## get all orthogroups that contribute to more than contrib_cutoff percent of PC1 and PC2 for heatmap
+pc <- 1
+
+pc1_names <- names(get_pca_var(all_pca)$contrib[,pc][get_pca_var(all_pca)$contrib[,pc] > 0.1])
+
+pc <- 2
+
+pc2_names <- names(get_pca_var(all_pca)$contrib[,pc][get_pca_var(all_pca)$contrib[,pc] > 0.1])
+
+ogs_to_plot <- c(pc1_names, pc2_names)
+
+length(ogs_to_plot)
+
+```
+
+
+
+
+```{r}
+
+df_pc1 <- df[,colnames(df) %in% ogs_to_plot ]
+
+## reorder columns to put effectors first
+
+df_pc1[rownames(df_pc1) %in% lineage_info$isolate[lineage_info$lineage == 2],][df_pc1[rownames(df_pc1) %in% lineage_info$isolate[lineage_info$lineage == 2],] == 1] <- 2
+
+df_pc1[rownames(df_pc1) %in% lineage_info$isolate[lineage_info$lineage == 3],][df_pc1[rownames(df_pc1) %in% lineage_info$isolate[lineage_info$lineage == 3],] == 1] <- 3
+
+df_pc1[rownames(df_pc1) %in% lineage_info$isolate[lineage_info$lineage == 4],][df_pc1[rownames(df_pc1) %in% lineage_info$isolate[lineage_info$lineage == 4],] == 1] <- 4
+
+
+df_pc1$test_column <- 5
+
+df_pc1 <- df_pc1[,c( ogs_to_plot[ogs_to_plot %in% effector_ogs],
+                     "test_column",
+                     ogs_to_plot[! (ogs_to_plot %in% effector_ogs)])]
+
+tree_no_lineage_1 <- keep.tip(tree, tree$tip.label[match(lineage_info$isolate, tree$tip.label)])
+
+colors = c('white', '#F8766D', '#00BA38', '#619CFF', 'black')
+
+par(mar=c(1,1,1,1))
+
+pdf('heat_map_PC1_587_ogs.pdf', width = 6.5, height = 5)
+
+phylo.heatmap(tree_no_lineage_1, df_pc1, fsize = 0.35, labels = FALSE, colors = colors, legend=FALSE, mar = c(0.5,0.5,0.5,0.5))
+
+dev.off()
+
+
+```
+
+
+
+```{r}
+# how many effectors are in pc1 for all ogs
+
+length(colnames(df_pc1)[colnames(df_pc1) %in% effector_ogs])
+
+```
+
+```{r}
+## get all orthogroups that contribute to more than contrib_cutoff percent of PC1 and PC2 for heatmap
+pc <- 1
+
+pc1_names <- names(get_pca_var(all_pca)$contrib[,pc][get_pca_var(all_pca)$contrib[,pc] > contrib_cutoff])
+
+pc <- 2
+
+pc2_names <- names(get_pca_var(all_pca)$contrib[,pc][get_pca_var(all_pca)$contrib[,pc] > contrib_cutoff])
+
+lineage_differentiating_ogs <- c(pc1_names, pc2_names)
+
+length(lineage_differentiating_ogs)
+
+```
+
+```{r}
+## reread in PAV matrix
+df <- data.frame(fread('../../pipeline_methods/pav_matrix.txt', na.strings = ''), row.names =1)
+
+colnames(df)[startsWith(colnames(df),'X')] <- gsub('X', '', colnames(df)[startsWith(colnames(df),'X')])
+
+colnames(df) <- gsub('\\.', '-', colnames(df))
+
+## drop NI907
+
+df <- subset(df, select = -c(NI907))
+
+orthogroups <- rownames(df)
+
+
+```
+
+
+
+```{r}
+
+## percentage of effectors in lineage_differentiating orthogroups
+print(length(lineage_differentiating_ogs[lineage_differentiating_ogs %in% effector_ogs])/length(lineage_differentiating_ogs)*100)
+
+## percentage of effectors in all orthogroups
+print(length(orthogroups[orthogroups %in% effector_ogs])/length(orthogroups)*100)
+
+## reread in PAV matrix
+df <- data.frame(fread('../../pipeline_methods/pav_matrix.txt', na.strings = ''), row.names =1)
+
+colnames(df)[startsWith(colnames(df),'X')] <- gsub('X', '', colnames(df)[startsWith(colnames(df),'X')])
+
+colnames(df) <- gsub('\\.', '-', colnames(df))
+
+## drop NI907
+
+df <- subset(df, select = -c(NI907))
+
+orthogroups <- rownames(df)
+
+df <- df[rowSums(df) != ncol(df),]
+df <- df[rowSums(df) != 0,]
+
+variable_orthogroups <- rownames(df)
+
+## percentage of effectors in variable orthogroups
+print(length(variable_orthogroups[variable_orthogroups %in% effector_ogs])/length(variable_orthogroups)*100)
+
+
+```
+
+
+
+```{r}
+
+output.file <- file('lineage_differentiating_pavs.txt', "wb") ## to get unix line endings
+
+write.table(lineage_differentiating_ogs, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+```
+

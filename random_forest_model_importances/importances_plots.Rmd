@@ -1,0 +1,147 @@
+---
+title: "importances_plot"
+output: html_document
+date: '2022-10-24'
+---
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(data.table)
+
+```
+
+```{r}
+
+files <- c(
+  'full_model_rice_default_importances.txt',
+  'full_model_rice_dropcol_importances.txt',
+  'full_model_rice_permutation_importances.txt',
+  'rf_importances_replicated.gene_info.full_model.rice_blast.txt',
+  'cross_host_rice_only_default_importances.txt',
+  'cross_host_rice_only_dropcol_importances.txt',
+  'cross_host_rice_only_permutation_importances.txt',
+  'rf_importances_replicated.gene_info.cross_host.rice_blast.txt',
+  'cross_host_wheat_only_default_importances.txt',
+  'cross_host_wheat_only_dropcol_importances.txt',
+  'cross_host_wheat_only_permutation_importances.txt',
+  'rf_importances_replicated.gene_info.cross_host.wheat_blast.txt'
+)
+
+outputs <- c(
+  'full_model_rice_default_importances_barplot.pdf',
+  'full_model_rice_dropcol_importances_barplot.pdf',
+  'full_model_rice_permutation_importances_barplot.pdf',
+  'full_model_rice_f1_perm_importances_barplot.pdf',
+  'cross_host_rice_only_default_importances_barplot.pdf',
+  'cross_host_rice_only_dropcol_importances_barplot.pdf',
+  'cross_host_rice_only_permutation_importances_barplot.pdf',
+  'cross_host_rice_only_f1_perm_importances_barplot.pdf',
+  'cross_host_wheat_only_default_importances_barplot.pdf',
+  'cross_host_wheat_only_dropcol_importances_barplot.pdf',
+  'cross_host_wheat_only_permutation_importances_barplot.pdf',
+  'cross_host_wheat_only_f1_perm_importances_barplot.pdf'
+)
+
+# titles <- c(
+#   'Full Model Trained on Subset Rice Blast Data',
+#   'Full Model Trained on Subset Rice Blast Data',
+#   'Full Model Trained on Subset Rice Blast Data',
+#   'Reduced Model Trained on Subset Rice Blast Data',
+#   'Reduced Model Trained on Subset Rice Blast Data',
+#   'Reduced Model Trained on Subset Rice Blast Data',
+#   'Reduced Model Trained on Subset Wheat Blast Data',
+#   'Reduced Model Trained on Subset Wheat Blast Data',
+#   'Reduced Model Trained on Subset Wheat Blast Data'
+# )
+
+```
+
+```{r}
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+```
+
+```{r}
+
+file = files[4]
+
+df <- data.frame(fread(file))
+
+df$Feature[df$Feature == 'H3K27me3'] <- 'H3K27me3 Signal'
+df$Feature[df$Feature == 'lengths'] <- 'Gene length'
+df$Feature[df$Feature == 'flanking_1kb_gc'] <- 'Flanking AT Content'
+df$Feature[df$Feature == 'pfam'] <- 'Has PFAM Annotation?'
+df$Feature[df$Feature == 'eccdna_cov'] <- 'CircleSeq Signal'
+df$Feature[df$Feature == 'any_te'] <- 'Has TE Nearby?'
+df$Feature[df$Feature == 'H3K36me3'] <- 'H3K36me3 Signal'
+df$Feature[df$Feature == 'methylation'] <- '% Methylated Cytosines'
+df$Feature[df$Feature == 'go'] <- 'Has GO Annotation?'
+df$Feature[df$Feature == 'H3K27ac'] <- 'H3K27ac Signal'
+df$Feature[df$Feature == 'cm_expression'] <- 'Expression in Culture'
+df$Feature[df$Feature == 'gene_nearby'] <- 'Has Gene Nearby?'
+df$Feature[df$Feature == 'tm'] <- 'Has TM Domain?'
+df$Feature[df$Feature == 'signalp'] <- 'Has Signal Peptide?'
+df$Feature[df$Feature == 'gene_gc'] <- 'Gene AT Content'
+df$Feature[df$Feature == 'ip_expression'] <- 'Expression in Planta'
+df$Feature[df$Feature == 'effectorp'] <- 'Is Predicted Effector?'
+
+colors <- gg_color_hue(17)
+
+df$Feature <- factor(df$Feature, levels = df$Feature)
+
+df <- df[order(-df$Importance),]
+
+names(colors) <- df$Feature
+
+```
+
+
+```{r}
+
+for (i in seq(from=1,to=length(files))){
+  file = files[i]
+  output = outputs[i]
+  print(file)
+  # title = titles[i]
+  
+  df <- data.frame(fread(file))
+  
+  df$Feature[df$Feature == 'H3K27me3'] <- 'H3K27me3 Signal'
+  df$Feature[df$Feature == 'lengths'] <- 'Gene length'
+  df$Feature[df$Feature == 'flanking_1kb_gc'] <- 'Flanking AT Content'
+  df$Feature[df$Feature == 'pfam'] <- 'Has PFAM Annotation?'
+  df$Feature[df$Feature == 'eccdna_cov'] <- 'CircleSeq Signal'
+  df$Feature[df$Feature == 'any_te'] <- 'Has TE Nearby?'
+  df$Feature[df$Feature == 'H3K36me3'] <- 'H3K36me3 Signal'
+  df$Feature[df$Feature == 'methylation'] <- '% Methylated Cytosines'
+  df$Feature[df$Feature == 'go'] <- 'Has GO Annotation?'
+  df$Feature[df$Feature == 'H3K27ac'] <- 'H3K27ac Signal'
+  df$Feature[df$Feature == 'cm_expression'] <- 'Expression in Culture'
+  df$Feature[df$Feature == 'gene_nearby'] <- 'Has Gene Nearby?'
+  df$Feature[df$Feature == 'tm'] <- 'Has TM Domain?'
+  df$Feature[df$Feature == 'signalp'] <- 'Has Signal Peptide?'
+  df$Feature[df$Feature == 'gene_gc'] <- 'Gene AT Content'
+  df$Feature[df$Feature == 'ip_expression'] <- 'Expression in Planta'
+  df$Feature[df$Feature == 'effectorp'] <- 'Is Predicted Effector?'
+  
+  df <- df[order(-df$Importance),]
+  
+  df$Feature <- factor(df$Feature, levels = df$Feature)
+  
+  p <- ggplot(df, aes(x=Feature, y=Importance, fill=Feature)) + 
+    geom_bar(stat='identity') + theme_classic()+
+    scale_fill_manual(values=colors) +
+    ylab('Average decrease in F1 of model \n when feature is permuted in test data')+
+    xlab('')+
+    # ggtitle(title)+
+    theme(axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.position = 'none', plot.title=element_text(size=8)) +
+    coord_flip()
+  
+  ggsave(output, plot = p, width = 4, height = 2)
+  
+}
+
+```
