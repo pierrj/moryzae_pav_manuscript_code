@@ -106,6 +106,10 @@ cp $CROSS_HOST_ANALYSIS_DIR/other_params/compare_param_distributions.Rmd $TARGET
 cp $RICE_BLAST_ANALYSIS_DIR/pipeline_methods/get_effector_og_list.ipynb $TARGET_DIR
 
 ## ngs_data_signal
+TARGET_DIR=ngs_data_signal/
+if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
+cp $CROSS_HOST_ANALYSIS_DIR/other_params/compare_param_distributions.Rmd $TARGET_DIR
+
 TARGET_DIR=ngs_data_signal/rice_blast/
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp $SLURM_SCRIPTS/expression_guy11.slurm $TARGET_DIR
@@ -118,10 +122,6 @@ TARGET_DIR=ngs_data_signal/wheat_blast/
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp $SLURM_SCRIPTS/expression_b71.slurm $TARGET_DIR
 cp $WHEAT_BLAST_ANALYSIS_DIR/random_forest/transer_info_from_b71.ipynb $TARGET_DIR
-
-TARGET_DIR=ngs_data_signal/
-if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
-cp $CROSS_HOST_ANALYSIS_DIR/other_params/compare_param_distributions.Rmd $TARGET_DIR
 
 ## orthogroup_pca
 TARGET_DIR=orthogroup_pca/
@@ -207,6 +207,10 @@ cp $PYTHON_SCRIPTS/output_train_test.py $TARGET_DIR
 cp $PYTHON_SCRIPTS/dependencies_per_column.py $TARGET_DIR
 
 ## te gene distance
+TARGET_DIR=te_gene_distance
+if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
+cp $CROSS_HOST_ANALYSIS_DIR/distance/cross_host_pav_distance_plots.Rmd $TARGET_DIR
+
 TARGET_DIR=te_gene_distance/rice_blast
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp $RICE_BLAST_ANALYSIS_DIR/distance/pav_distances.Rmd $TARGET_DIR
@@ -215,19 +219,7 @@ TARGET_DIR=te_gene_distance/wheat_blast
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp $WHEAT_BLAST_ANALYSIS_DIR/distance/pav_distances.Rmd $TARGET_DIR
 
-TARGET_DIR=te_gene_distance
-if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
-cp $CROSS_HOST_ANALYSIS_DIR/distance/cross_host_pav_distance_plots.Rmd $TARGET_DIR
-
 ## validate missing orthogroups
-TARGET_DIR=validate_missing_orthogroups/rice_blast
-if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
-cp $RICE_BLAST_ANALYSIS_DIR/pipeline_methods/print_pav_for_validation.Rmd $TARGET_DIR
-
-TARGET_DIR=validate_missing_orthogroups/wheat_blast
-if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
-cp $WHEAT_BLAST_ANALYSIS_DIR/pipeline_methods/print_pav_for_validation.Rmd $TARGET_DIR
-
 TARGET_DIR=validate_missing_orthogroups/
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp $BASH_SCRIPTS/tblastn_validation_launch_script.sh $TARGET_DIR
@@ -235,6 +227,14 @@ cp $BASH_SCRIPTS/tblastn_validation.sh $TARGET_DIR
 cp $PYTHON_SCRIPTS/make_single_file_from_og_dir.py $TARGET_DIR
 cp $PYTHON_SCRIPTS/parse_tblastn_hits.py $TARGET_DIR
 cp $PYTHON_SCRIPTS/parse_blastp_hits.py $TARGET_DIR
+
+TARGET_DIR=validate_missing_orthogroups/rice_blast
+if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
+cp $RICE_BLAST_ANALYSIS_DIR/pipeline_methods/print_pav_for_validation.Rmd $TARGET_DIR
+
+TARGET_DIR=validate_missing_orthogroups/wheat_blast
+if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
+cp $WHEAT_BLAST_ANALYSIS_DIR/pipeline_methods/print_pav_for_validation.Rmd $TARGET_DIR
 
 ## fungap
 TARGET_DIR=genome_annotation

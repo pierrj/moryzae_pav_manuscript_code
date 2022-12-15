@@ -1,0 +1,286 @@
+---
+title: "print_pav_for_validation"
+output: html_document
+---
+
+```{r}
+library(data.table)
+
+```
+
+```{r}
+## read in orthogroups
+
+df <- data.frame(fread('Orthogroups.tsv', na.strings = ''))
+
+df <- subset(df, select = -c(Orthogroup))
+
+## change names to match lineage info spreadsheet
+
+str_split_vector <- function(x, string){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- strsplit(item, string)[[1]][1]
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+
+# fix col names
+colnames(df) <- str_split_vector(colnames(df), '_')
+
+
+colnames(df)[startsWith(colnames(df),'X')] <- gsub('X', '', colnames(df)[startsWith(colnames(df),'X')])
+
+
+colnames(df) <- gsub('\\.', '-', colnames(df))
+
+# colnames(df)[startsWith(colnames(df),'GCA')] <- gsub('-', '\\.', colnames(df)[startsWith(colnames(df),'GCA')])
+# 
+# colnames(df)[startsWith(colnames(df),'GCA')] <- gsub('GCA','', colnames(df)[startsWith(colnames(df),'GCA')])
+
+# convert to binary
+df[is.na(df)] <- 0
+
+df[df != 0] <- 1
+
+df[] <- lapply(df, function(x) as.numeric(x))
+
+
+## add back OG names
+
+df_ogs <- data.frame(fread('Orthogroups.tsv', na.strings = ''))
+
+rownames(df) <- df_ogs$Orthogroup
+```
+
+
+```{r}
+
+
+genome_file_list <- c(
+  '13FM-16-1_genomic.fna',
+  '13FM-24-1_genomic.fna',
+  '13FM-3-2_genomic.fna',
+  '13FM-5-1_genomic.fna',
+  'AG0004_genomic.fna',
+  'AV1-1-1_genomic.fna',
+  'BJ-90-611_genomic.fna',
+  'BJ08-8_genomic.fna',
+  'BN0123_genomic.fna',
+  'BN0202_genomic.fna',
+  'BN0252_genomic.fna',
+  'CD0065_genomic.fna',
+  'CD0142_genomic.fna',
+  'CH0043_genomic.fna',
+  'CH0072_genomic.fna',
+  'CH0452_genomic.fna',
+  'CH0461_genomic.fna',
+  'CH1103_genomic.fna',
+  'CH1164_genomic.fna',
+  'CM0028_genomic.fna',
+  'DB11-621_genomic.fna',
+  'FJ0204804_genomic.fna',
+  'FJ11SH-527-1_genomic.fna',
+  'FJ12JN-084-3_genomic.fna',
+  'FJ13SH05-2_genomic.fna',
+  'FJ2000-62A_genomic.fna',
+  'FJ2000-69A_genomic.fna',
+  'FJ2001-112B_genomic.fna',
+  'FJ2003-001A1_genomic.fna',
+  'FJ2005113B_genomic.fna',
+  'FJ2006-60A3_genomic.fna',
+  'FJ72ZC7-77_genomic.fna',
+  'FJ78-JJ_genomic.fna',
+  'FJ81-JY_genomic.fna',
+  'FJ81-MH_genomic.fna',
+  'FJ81-SW_genomic.fna',
+  'FJ81-ZP_genomic.fna',
+  'FJ81221ZB11-14_genomic.fna',
+  'FJ86-CT_genomic.fna',
+  'FJ86061ZE3-39_genomic.fna',
+  'FJ95054B_genomic.fna',
+  'FJ95085AZB13-116_genomic.fna',
+  'FJ98099_genomic.fna',
+  'FJ99138_genomic.fna',
+  'FJSH0703_genomic.fna',
+  'GCA_000002495.2_MG8_genomic.fna',
+  'GCA_000475075.1_HN19311_genome_assembly_genomic.fna',
+  'GCA_000498135.1_FJ81278_genome_assembly_genomic.fna',
+  'GCA_000734075.1_Mo2303.1_genomic.fna',
+  'GCA_000734095.1_Mo1106.2_genomic.fna',
+  'GCA_000734215.1_Mo4603.4_genomic.fna',
+  'GCA_000734245.1_MoJS25_genomic.fna',
+  'GCA_000734315.1_MoZJ15_genomic.fna',
+  'GCA_000734335.1_MoAH06_genomic.fna',
+  'GCA_000832285.1_M_oryzae_b157_v1_genomic.fna',
+  'GCA_000969745.1_M_oryzae_MG01_v1_genomic.fna',
+  'GCA_001936075.1_ASM193607v1_genomic.fna',
+  'GCA_001936435.1_ASM193643v1_genomic.fna',
+  'GCA_002105295.1_ASM210529v1_genomic.fna',
+  'GCA_002218345.1_H08-1a_0.9_genomic.fna',
+  'GCA_002218355.1_H08-1c_0.9_genomic.fna',
+  'GCA_002368475.1_ASM236847v1_genomic.fna',
+  'GCA_002368485.1_ASM236848v1_genomic.fna',
+  'GCA_002368515.1_ASM236851v1_genomic.fna',
+  'GCA_002368525.1_ASM236852v1_genomic.fna',
+  'GCA_002924965.1_ASM292496v1_genomic.fna',
+  'GCA_002924985.1_ASM292498v1_genomic.fna',
+  'GCA_002925025.1_ASM292502v1_genomic.fna',
+  'GCA_002925045.1_ASM292504v1_genomic.fna',
+  'GCA_002925065.1_ASM292506v1_genomic.fna',
+  'GCA_002925085.1_ASM292508v1_genomic.fna',
+  'GCA_002925095.1_ASM292509v1_genomic.fna',
+  'GCA_002925215.1_ASM292521v1_genomic.fna',
+  'GCA_003013125.1_ASM301312v1_genomic.fna',
+  'GCA_003015465.1_ASM301546v1_genomic.fna',
+  'GCA_003015595.1_ASM301559v1_genomic.fna',
+  'GCA_003015805.1_ASM301580v1_genomic.fna',
+  'GCA_003016085.1_ASM301608v1_genomic.fna',
+  'GCA_003016175.1_ASM301617v1_genomic.fna',
+  'GCA_003016785.1_ASM301678v1_genomic.fna',
+  'GCA_003990535.1_Moryzae-RP-2421.1.0_genomic.fna',
+  'GCA_003991345.1_ASM399134v1_genomic.fna',
+  'GCA_004355905.1_PgNI_genomic.fna',
+  'GCA_011799905.1_ASM1179990v1_genomic.fna',
+  'GCA_011799915.1_ASM1179991v1_genomic.fna',
+  'GCA_011799925.1_ASM1179992v1_genomic.fna',
+  'GCA_011799965.1_ASM1179996v1_genomic.fna',
+  'GCA_012922935.1_ASM1292293v1_genomic.fna',
+  'GCA_900474655.3_FR13_genome_polished_no_mito_genomic.fna',
+  'GD06-53_genomic.fna',
+  'GD08-2025_genomic.fna',
+  'GY0040_genomic.fna',
+  'HB-14_genomic.fna',
+  'HB-LTH18_genomic.fna',
+  'HN-0812-3_genomic.fna',
+  'HN-158_genomic.fna',
+  'HN10-1604_genomic.fna',
+  'IA1_genomic.fna',
+  'IB33_genomic.fna',
+  'IB49_genomic.fna',
+  'IC17_genomic.fna',
+  'IE1K_genomic.fna',
+  'IN0017_genomic.fna',
+  'IN0054_genomic.fna',
+  'IN0059_genomic.fna',
+  'IN0114_genomic.fna',
+  'IN0115_genomic.fna',
+  'IN0116_genomic.fna',
+  'IT0010_genomic.fna',
+  'JS08-611_genomic.fna',
+  'JS09-138_genomic.fna',
+  'JX-09Z116-1_genomic.fna',
+  'JX10-102_genomic.fna',
+  'JX11-141_genomic.fna',
+  'KA1-3-1_genomic.fna',
+  'KA2-1-1_genomic.fna',
+  'ML0060_genomic.fna',
+  'ML0062_genomic.fna',
+  'ML33_genomic.fna',
+  'NG0012_genomic.fna',
+  'NG0054_genomic.fna',
+  'Nich-2-3-2_genomic.fna',
+  'Nich-2-7-4_genomic.fna',
+  'SC-10-120-65-2_genomic.fna',
+  'SC-10-25-44-1_genomic.fna',
+  'TG0004_genomic.fna',
+  'TG0032_genomic.fna',
+  'TN0001_genomic.fna',
+  'TN0002_genomic.fna',
+  'TN0050_genomic.fna',
+  'TN0057_genomic.fna',
+  'TN0090_genomic.fna',
+  'TR0025_genomic.fna',
+  'TW-1-1-1-B-1_genomic.fna',
+  'TW-12CY-TB1-2_genomic.fna',
+  'TW-12HL-DF1-2_genomic.fna',
+  'TW-12HL-YL2-1_genomic.fna',
+  'TW-12TD-RH1-1_genomic.fna',
+  'TW-12TN-HB2-2_genomic.fna',
+  'TW-12YL-DL3-2_genomic.fna',
+  'TW-12YL-DP1-1_genomic.fna',
+  'TW-12YL-TT4-1_genomic.fna',
+  'TW-2-7-2-A-1_genomic.fna',
+  'TW-6-2-2-B-1_genomic.fna',
+  'TW-6-43-1_genomic.fna',
+  'TW-CYBP1-3_genomic.fna',
+  'TW-PT1-1_genomic.fna',
+  'TW-PT3-1_genomic.fna',
+  'TW-PT6-1_genomic.fna',
+  'TW-TN4-2_genomic.fna',
+  'US0041_genomic.fna',
+  'VT0027_genomic.fna',
+  'VT0030_genomic.fna',
+  'WD-3-1_genomic.fna',
+  'YN07205e_genomic.fna',
+  'YN072310_genomic.fna',
+  'YN072311_genomic.fna',
+  'YN072313_genomic.fna',
+  'YN08181e_genomic.fna',
+  'YN08182c_genomic.fna',
+  'YN126311_genomic.fna',
+  'YN126441_genomic.fna',
+  'YN8773-19_genomic.fna',
+  'YN8773R-27_genomic.fna',
+  'ZJ00-10_genomic.fna',
+  'ZJ08-41_genomic.fna',
+  'ZJ2011-7-1_genomic.fna'
+)
+
+```
+
+```{r}
+
+grep_vector <- function(x, grep_list){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- grep_list[grep(item, grep_list)]
+    if (item == '70-15') {
+      output <- 'GCA_000002495.2_MG8_genomic.fna'
+    } else if (item == 'GY11') {
+      output <- 'GCA_002368485.1_ASM236848v1_genomic.fna'
+    } else if (item == 'NI907'){
+      output <- 'GCA_004355905.1_PgNI_genomic.fna'
+    }
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+colnames(df) <- grep_vector(colnames(df), genome_file_list)
+
+```
+
+
+```{r}
+
+## stack data frame and add back orthogroup information
+
+df_stacked <- stack(df)
+
+colnames(df_stacked) <- c('pav', 'genome')
+
+df_stacked$og <- rep(rownames(df), ncol(df))
+
+## subset to missing
+
+df_stacked <- df_stacked[df_stacked$pav == 0,]
+
+df_stacked <- subset(df_stacked, select = -c(pav))
+
+```
+
+```{r}
+## write to tsv
+
+output.file <- file('absences_to_validate.txt', "wb") ## to get unix line endings
+
+write.table(df_stacked, file = output.file, quote = FALSE, sep = '\t', row.names = FALSE, col.names = FALSE)
+
+close(output.file)
+
+
+```
+

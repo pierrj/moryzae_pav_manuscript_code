@@ -1,0 +1,213 @@
+---
+title: "print_pav_for_validation"
+output: html_document
+---
+
+```{r}
+library(data.table)
+
+```
+
+```{r}
+
+df <- data.frame(fread('Orthogroups.tsv', na.strings = ''))
+
+df <- subset(df, select = -c(Orthogroup))
+
+## change names to match lineage info spreadsheet
+
+str_split_vector <- function(x, string){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- strsplit(item, string)[[1]][1]
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+
+# fix col names
+colnames(df) <- str_split_vector(colnames(df), '_')
+
+colnames(df) <- gsub('\\.', '-', colnames(df))
+
+colnames(df)[startsWith(colnames(df),'GCA')] <- gsub('-', '\\.', colnames(df)[startsWith(colnames(df),'GCA')])
+
+colnames(df)[startsWith(colnames(df),'GCA')] <- gsub('GCA','', colnames(df)[startsWith(colnames(df),'GCA')])
+
+# convert to binary
+df[is.na(df)] <- 0
+
+df[df != 0] <- 1
+
+df[] <- lapply(df, function(x) as.numeric(x))
+
+
+## add back OG names
+
+df_ogs <- data.frame(fread('Orthogroups.tsv', na.strings = ''))
+
+rownames(df) <- df_ogs$Orthogroup
+```
+
+```{r}
+genome_file_list <- c(
+'GCA_001675595.1_ASM167559v1_genomic.fna',
+'GCA_001675605.1_ASM167560v1_genomic.fna',
+'GCA_001675615.1_ASM167561v1_genomic.fna',
+'GCA_001675625.1_ASM167562v1_genomic.fna',
+'GCA_002218425.1_Py22.1_genomic.fna',
+'GCA_002218435.1_ASM221843v1_genomic.fna',
+'GCA_002218465.1_ASM221846v1_genomic.fna',
+'GCA_002924665.1_ASM292466v1_genomic.fna',
+'GCA_002924685.1_ASM292468v1_genomic.fna',
+'GCA_002924695.1_ASM292469v1_genomic.fna',
+'GCA_002924745.1_ASM292474v1_genomic.fna',
+'GCA_002925325.1_ASM292532v1_genomic.fna',
+'GCA_002925335.1_ASM292533v1_genomic.fna',
+'GCA_002925345.1_ASM292534v1_genomic.fna',
+'GCA_002925425.1_ASM292542v1_genomic.fna',
+'GCA_004355905.1_PgNI_genomic.fna',
+'GCA_004785725.2_ASM478572v2_genomic.fna',
+'GCA_012490805.1_ASM1249080v1_genomic.fna',
+'GCA_012490815.1_ASM1249081v1_genomic.fna',
+'GCA_012979135.1_ASM1297913v1_genomic.fna',
+'GCA_900474175.3_US71_genome_polished_no_mito_genomic.fna',
+'GCA_900474225.2_BTJP4_1_contigs_genomic.fna',
+'GCA_900474375.2_BTMP13_1_contigs_genomic.fna',
+'GCA_900474435.2_BTGP6F_contigs_genomic.fna',
+'GCA_900474475.3_CD156_genome_polished_no_mito_genomic.fna',
+'GCA_900474545.3_BR32_genome_polished_no_mito_genomic.fna',
+'GCA_900474635.2_BTGP1b_contigs_genomic.fna',
+'GCA_900474655.3_FR13_genome_polished_no_mito_genomic.fna',
+'GCA_905066965.2_AG059_contigs_polished_genomic.fna',
+'GCA_905067005.2_AG038_contigs_polished_genomic.fna',
+'GCA_905067015.2_AG098_contigs_polished_genomic.fna',
+'GCA_905067025.2_AG006_contigs_polished_genomic.fna',
+'GCA_905067035.2_AG039_contigs_polished_genomic.fna',
+'GCA_905067045.2_AG002_contigs_polished_genomic.fna',
+'GCA_905067055.2_AG032_contigs_polished_genomic.fna',
+'GCA_905067075.2_PR003_contigs_polished_genomic.fna',
+'GCA_905067085.2_SAndrea_contigs_polished_genomic.fna',
+'GCA_905081835.1_Assembly_of_M.oryzae_isolate_76_3_genome_genomic.fna',
+'GCA_905104965.1_Assembly_of_M.oryzae_isolate_BN0293_genome_genomic.fna',
+'GCA_905105065.1_Assembly_of_M.oryzae_isolate_82_0835_genome_genomic.fna',
+'GCA_905105085.1_Assembly_of_M.oryzae_isolate_BF32_genome_genomic.fna',
+'GCA_905105095.1_Assembly_of_M.oryzae_isolate_BF48_genome_genomic.fna',
+'GCA_905105105.1_Assembly_of_M.oryzae_isolate_BF17_genome_genomic.fna',
+'GCA_905105115.1_Assembly_of_M.oryzae_isolate_90_4_1_genome_genomic.fna',
+'GCA_905105125.1_Assembly_of_M.oryzae_isolate_BF5_genome_genomic.fna',
+'GCA_905109085.1_Assembly_of_M.oryzae_isolate_BTGP1_b_genome_genomic.fna',
+'GCA_905109095.1_Assembly_of_M.oryzae_isolate_BTJP4_12_genome_genomic.fna',
+'GCA_905109105.1_Assembly_of_M.oryzae_isolate_BTJP4_11_genome_genomic.fna',
+'GCA_905109115.1_Assembly_of_M.oryzae_isolate_BTBaB1_genome_genomic.fna',
+'GCA_905109125.1_Assembly_of_M.oryzae_isolate_BTBa_2_genome_genomic.fna',
+'GCA_905109135.1_Assembly_of_M.oryzae_isolate_BTAR_A1_genome_genomic.fna',
+'GCA_905109245.1_Assembly_of_M.oryzae_isolate_BTJP4_16_genome_genomic.fna',
+'GCA_905109485.1_Assembly_of_M.oryzae_isolate_BTJP4_18_genome_genomic.fna',
+'GCA_905109745.1_Assembly_of_M.oryzae_isolate_BTJP4_6_genome_genomic.fna',
+'GCA_905109755.1_Assembly_of_M.oryzae_isolate_BTJP_4_2_genome_genomic.fna',
+'GCA_905109765.1_Assembly_of_M.oryzae_isolate_Glhn3_genome_genomic.fna',
+'GCA_905109775.1_Assembly_of_M.oryzae_isolate_BTTrp_6_genome_genomic.fna',
+'GCA_905109785.1_Assembly_of_M.oryzae_isolate_BTJP4_3_genome_genomic.fna',
+'GCA_905109805.1_Assembly_of_M.oryzae_isolate_KE019_genome_genomic.fna',
+'GCA_905109815.1_Assembly_of_M.oryzae_isolate_BTMP_S13_1_genome_genomic.fna',
+'GCA_905109825.1_Assembly_of_M.oryzae_isolate_BTGP_6_g_genome_genomic.fna',
+'GCA_905109835.1_Assembly_of_M.oryzae_isolate_KE017_genome_genomic.fna',
+'GCA_905109845.1_Assembly_of_M.oryzae_isolate_BTJP_4_15_genome_genomic.fna',
+'GCA_905109865.1_Assembly_of_M.oryzae_isolate_JUM1_genome_genomic.fna',
+'GCA_905109875.1_Assembly_of_M.oryzae_isolate_KE016_genome_genomic.fna',
+'GCA_905109885.1_Assembly_of_M.oryzae_isolate_KE021_genome_genomic.fna',
+'GCA_905109895.1_Assembly_of_M.oryzae_isolate_Glhn4_genome_genomic.fna',
+'GCA_905109905.1_Assembly_of_M.oryzae_isolate_EG308_genome_genomic.fna',
+'GCA_905109915.1_Assembly_of_M.oryzae_isolate_BTJP_4_9_genome_genomic.fna',
+'GCA_905109925.1_Assembly_of_M.oryzae_isolate_BTTrp_5_genome_genomic.fna',
+'GCA_905114085.1_Assembly_of_M.oryzae_isolate_KE029_genome_genomic.fna',
+'GCA_905114095.1_Assembly_of_M.oryzae_isolate_KE041_genome_genomic.fna',
+'GCA_905114105.1_Assembly_of_M.oryzae_isolate_KE210_genome_genomic.fna',
+'GCA_905114645.1_Assembly_of_M.oryzae_isolate_KE255_genome_genomic.fna',
+'GCA_905114655.1_Assembly_of_M.oryzae_isolate_KE332_genome_genomic.fna',
+'GCA_905114665.1_Assembly_of_M.oryzae_isolate_KE415_genome_genomic.fna',
+'GCA_905114675.1_Assembly_of_M.oryzae_isolate_KE443_genome_genomic.fna',
+'GCA_905114685.1_Assembly_of_M.oryzae_isolate_KE491_genome_genomic.fna',
+'GCA_905114695.1_Assembly_of_M.oryzae_isolate_KE473_genome_genomic.fna',
+'GCA_905114705.1_Assembly_of_M.oryzae_isolate_NG0104_genome_genomic.fna',
+'GCA_905114715.1_Assembly_of_M.oryzae_isolate_NG0110_genome_genomic.fna',
+'GCA_905114725.1_Assembly_of_M.oryzae_isolate_NG0135_genome_genomic.fna',
+'GCA_905114735.1_Assembly_of_M.oryzae_isolate_NG0153_genome_genomic.fna',
+'GCA_905114745.1_Assembly_of_M.oryzae_isolate_TH3_genome_genomic.fna',
+'GCA_905114755.1_Assembly_of_M.oryzae_isolate_TG004_genome_genomic.fna',
+'GCA_905114765.1_Assembly_of_M.oryzae_isolate_TZ090_genome_genomic.fna',
+'GCA_905114775.1_Assembly_of_M.oryzae_isolate_UG08_genome_genomic.fna',
+'GCA_905114785.1_Assembly_of_M.oryzae_isolate_VO104_genome_genomic.fna',
+'GCA_905114795.1_Assembly_of_M.oryzae_isolate_VO113_genome_genomic.fna',
+'GCA_905114805.1_Assembly_of_M.oryzae_isolate_BTGP_6_e_genome_genomic.fna',
+'GCA_905114815.1_Assembly_of_M.oryzae_isolate_BTGP_6_f_genome_genomic.fna',
+'GCA_905114825.1_Assembly_of_M.oryzae_isolate_BTGP_6_h_genome_genomic.fna',
+'GCA_905125175.1_Assembly_of_M.oryzae_isolate_BTJP_4_1_genome_genomic.fna',
+'GCA_905125185.1_Assembly_of_M.oryzae_isolate_KE002_genome_genomic.fna',
+'GCA_905186785.1_Assembly_of_M.oryzae_isolate_BTJP4_5_genome_genomic.fna',
+'GCA_905186795.1_Assembly_of_M.oryzae_isolate_BTMP_S_13_2_genome_genomic.fna',
+'GCA_905232145.1_Assembly_of_M.oryzae_isolate_VO108_genome_genomic.fna',
+'GCA_911175055.1_N06047_contigs_genomic.fna'
+)
+```
+
+
+
+```{r}
+
+grep_vector <- function(x, grep_list){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- grep_list[grep(item, grep_list)]
+    if (item == '70-15') {
+      output <- 'GCA_000002495.2_MG8_genomic.fna'
+    } else if (item == 'GY11') {
+      output <- 'GCA_002368485.1_ASM236848v1_genomic.fna'
+    } else if (item == 'NI907'){
+      output <- 'GCA_004355905.1_PgNI_genomic.fna'
+    }
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+colnames(df) <- grep_vector(colnames(df), genome_file_list)
+
+```
+
+
+```{r}
+
+## stack data frame and add back orthogroup information
+
+df_stacked <- stack(df)
+
+colnames(df_stacked) <- c('pav', 'genome')
+
+df_stacked$og <- rep(rownames(df), ncol(df))
+
+## subset to missing
+
+df_stacked <- df_stacked[df_stacked$pav == 0,]
+
+df_stacked <- subset(df_stacked, select = -c(pav))
+
+```
+
+```{r}
+## write to tsv
+
+output.file <- file('absences_to_validate.tsv', "wb") ## to get unix line endings
+
+write.table(df_stacked, file = output.file, quote = FALSE, sep = '\t', row.names = FALSE, col.names = FALSE)
+
+close(output.file)
+
+```
+
+```{r}
+df
+```
+

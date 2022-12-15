@@ -1,0 +1,855 @@
+---
+title: "pav_distances"
+output: html_document
+date: '2022-10-18'
+---
+
+```{r}
+
+library(ggplot2)
+library(tidyr)
+library(data.table)
+library(ggnewscale)
+
+```
+
+```{r}
+
+
+## read in files
+read_locations = function(genome) {
+  # list of elements to judge the distance of, in this case genes
+  
+  locations_file = paste("../random_forest/all_gffs_fixed/",genome,"_fungap_out.fixed.gff3", sep='')
+  
+  # list of elements to judge the distance to, in this case genes again
+  
+  
+  # read in file
+  # just genes and their location and orientation
+  locations <- read.table(locations_file,header=FALSE,sep='\t')
+  
+  locations <- locations[locations$V3 == 'gene',]
+  
+  locations <- subset(locations, select = c(V1, V4, V5, V7, V9))
+  
+  colnames(locations) <- c('scaffold', 'start', 'end', 'orientation', 'id')
+  
+  locations$id <- gsub(".*ID=(.+);.*", "\\1", locations$id)
+  
+  locations$id <- gsub("^(.+);.*", "\\1", locations$id)
+  
+  return(locations)
+}
+
+## read in comparison tes
+read_comparison_te = function(genome) {
+  comparison_file = paste("../random_forest/te_annotations/", genome,".w_class.gff", sep='')
+    
+  comparison <- read.table(comparison_file, header=FALSE,sep='\t')
+  
+  comparison <- subset(comparison, select = c(V1, V4, V5, V6, V7, V9, V10))
+  
+  colnames(comparison) <- c('scaffold', 'start', 'end', 'identity', 'orientation', 'element', 'class')
+  
+  return(comparison)
+}
+
+## read in comparison genes
+read_comparison_gene = function(genome) {
+  comparison_file = paste("../random_forest/all_gffs_fixed/",genome,"_fungap_out.fixed.gff3", sep='')
+    
+  comparison <- read.table(comparison_file, header=FALSE,sep='\t')
+
+  comparison <- comparison[comparison$V3 == 'gene',]
+  
+  comparison <- subset(comparison, select = c(V1, V4, V5, V7, V9))
+  
+  colnames(comparison) <- c('scaffold', 'start', 'end', 'orientation', 'id')
+  
+  comparison$id <- gsub(".*ID=(.+);.*", "\\1", comparison$id)
+  
+  comparison$id <- gsub("^(.+);.*", "\\1", locations$id)
+  
+  return(comparison)
+}
+
+# add orthogroup information
+add_ogs = function(genome_full_name, locations) {
+  
+  orthogroup_info <- data.frame(df_ogs[genome_full_name])
+  
+  rownames(orthogroup_info) <- rownames(df_ogs)
+  
+  orthogroup_info <- na.omit(orthogroup_info)
+  
+  colnames(orthogroup_info) <- c('protein')
+  
+  ## this is to deal with the separation later, need to know how big to make the data frame
+  max_columns <- max(sapply(orthogroup_info$protein, strsplit_sapply))
+  
+  column_names <- as.character(seq(from = 1, to = max_columns, by = 1))
+  
+  orthogroup_info <- separate(data = orthogroup_info, col = protein, into = column_names, sep = ", ")
+  
+  og_list <- list()
+  
+  for (col in colnames(orthogroup_info)){
+    og_list <- c(og_list, setNames(rownames(orthogroup_info[! is.na(orthogroup_info[[col]]), ]),
+                                   na.omit(orthogroup_info[[col]])))
+  }
+  
+  og_list_ordered <- og_list[locations$id]
+  
+  # replace null values with NAs
+  og_list_ordered[sapply(og_list_ordered, is.null)] <- NA
+  
+  return(as.vector(unlist(og_list_ordered)))
+}
+
+strsplit_sapply = function(gene_string){
+  return(length(strsplit(gene_string, ', ')[[1]]))
+}
+
+element_distance = function(x, output, subset_per_scaffold) {
+  scaffold = x['scaffold']
+  start = as.numeric(x['start'])
+  end = as.numeric(x['end'])
+  enough_space_gene = x['enough_space_gene']
+  id = as.character(x['id'])
+  orientation = as.character(x['orientation'])
+  
+  nearby_upstream = subset_per_scaffold[subset_per_scaffold$end < start
+                      & subset_per_scaffold$id != id,] ## make sure you dont match to the same gene each time
+  
+  if (dim(nearby_upstream)[1] != 0){ # if not empty
+     upstream_distance = abs(max(nearby_upstream$end) - start)
+     }else {
+       upstream_distance = NA
+     }
+  
+  nearby_downstream = subset_per_scaffold[subset_per_scaffold$start > end
+                      & subset_per_scaffold$id != id,] ## make sure you dont match to the same gene each time
+  
+  if (dim(nearby_downstream)[1] != 0){ # if not empty
+    downstream_distance = abs(min(nearby_downstream$start) - end)
+    } else {
+       downstream_distance = NA
+    }
+  
+  if (orientation == "-") { ## these are swapped if the orientation is backwards
+    downstream_distance_old = downstream_distance
+    upstream_distance_old = upstream_distance
+    upstream_distance = downstream_distance_old
+    downstream_distance = upstream_distance_old
+  }
+  
+  if (output == "downstream"){
+    return(downstream_distance)
+  } else if (output == "upstream") {
+    return(upstream_distance)
+  } else if (output == "closest") {
+    if (is.na(downstream_distance) & is.na(upstream_distance)){
+      return(NA)
+    } else {
+    return(min(downstream_distance,upstream_distance,na.rm=TRUE))
+    }
+  }
+}
+
+read_chromsizes = function(genome) {
+  chromsizes_file = paste("../random_forest/chrom_sizes/",genome,".chromsizes", sep='')
+  
+  chromsizes <- read.table(chromsizes_file,header=FALSE,sep='\t')
+  
+  colnames(chromsizes) <- c('scaffold','size')
+  
+  return(chromsizes)
+}
+
+## check if there is enough space around the gene to call
+enough_space = function(x, distance) {
+  scaffold = x['scaffold']
+  start = as.numeric(x['start'])
+  end = as.numeric(x['end'])
+  scaffold_size = chromsizes$size[chromsizes$scaffold==scaffold]
+  if (start >= distance | end <= (scaffold_size - distance)){ ## check if there are enough sequenced base pairs to call a FALSE on at least one side
+      return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+## check if a te is nearby or not
+nearby_te_per_class = function(x, class, distance) {
+  scaffold = x['scaffold']
+  start = as.numeric(x['start'])
+  end = as.numeric(x['end'])
+  enough_space_te = x['enough_space_te']
+  nearby_te = subset_per_class_per_scaffold[subset_per_class_per_scaffold$end >= start - distance
+                      & subset_per_class_per_scaffold$start <= end + distance,]
+  if (dim(nearby_te)[1] == 0){ # if empty
+    if (enough_space_te == TRUE){ ## check if there are enough sequenced base pairs to call a FALSE
+      return(FALSE)
+    } else {
+      return(NA) ## otherwise we dont know
+    }
+  } else{
+    return(TRUE)
+  }
+}
+
+nearby_gene = function(x, class, distance) {
+  scaffold = x['scaffold']
+  start = as.numeric(x['start'])
+  end = as.numeric(x['end'])
+  enough_space_gene = x['enough_space_gene']
+  id = x['id']
+  nearby_genes = subset_genes_per_scaffold[subset_genes_per_scaffold$end >= start - distance
+                      & subset_genes_per_scaffold$start <= end + distance
+                      & subset_genes_per_scaffold$id != id,] ## make sure you dont match to the same gene each time
+  if (dim(nearby_genes)[1] == 0){ # if empty
+    if (enough_space_gene == TRUE){ ## check if there are enough sequenced base pairs to call a FALSE
+      return(FALSE)
+    } else {
+      return(NA) ## otherwise we dont know
+    }
+  } else{
+    return(TRUE)
+  }
+}
+
+```
+
+```{r}
+
+## read in ogs
+df_ogs <- data.frame(fread('../pipeline_methods/Orthogroups.tsv', na.strings = ''))
+
+rownames(df_ogs) <- df_ogs$Orthogroup
+
+df_ogs <- subset(df_ogs, select = -c(Orthogroup))
+
+## change names to match lineage info spreadsheet
+
+str_split_vector <- function(x, string){
+  output_vector <- c()
+  for ( item in x ) {
+    output <- strsplit(item, string)[[1]][1]
+    output_vector <- c(output_vector, output)
+  }
+  return(output_vector)
+}
+
+
+# fix col names
+colnames(df_ogs) <- str_split_vector(colnames(df_ogs), '_')
+
+
+colnames(df_ogs)[startsWith(colnames(df_ogs),'X')] <- gsub('X', '', colnames(df_ogs)[startsWith(colnames(df_ogs),'X')])
+
+
+colnames(df_ogs) <- gsub('\\.', '-', colnames(df_ogs))
+
+## read in lineage info
+assembly_stats <- data.frame(fread('../pipeline_methods/gladieux_et_al_assembly_stats.txt', na.strings = ''))
+
+lineage_info <- subset(assembly_stats, select = c(V1, V3, V4))
+
+colnames(lineage_info) <- c('isolate', 'lineage', 'sublineage')
+
+lineage_info[lineage_info$isolate == 'WD-3-1_1',]$isolate <- 'WD-3-1'
+
+lineage_info$lineage_string <- paste(lineage_info$isolate, lineage_info$lineage, lineage_info$sublineage, rep("protein", length(lineage_info$sublineage)),sep = '_')
+```
+
+## TEST ##
+
+```{r}
+
+lineage <- 2
+
+conserved_file <- paste('../pipeline_methods/conserved_ogs_', lineage, '.txt', sep = '')
+
+conserved_ogs <- read.table(conserved_file, header=FALSE, sep='\t')
+
+conserved_ogs <- conserved_ogs$V1
+
+pav_file <- paste('../pipeline_methods/actual_pav_ogs_', lineage,'.txt', sep ='')
+
+pav_ogs <- read.table(pav_file, header=FALSE, sep='\t')
+
+pav_ogs <- pav_ogs$V1
+
+genome <- "13FM-3-2"
+
+genome_full_name <- "13FM-3-2"
+
+```
+
+```{r}
+
+locations <- read_locations(genome)
+comparison_tes <- read_comparison_te(genome)
+comparison_genes <- read_comparison_gene(genome)
+
+# add og information to locations AND comparison
+locations$orthogroups <- suppressWarnings(add_ogs(genome_full_name, locations))
+# drop genes without ogs
+locations <- locations[! (is.na(locations$orthogroups)),]
+comparison_genes$orthogroups <- suppressWarnings(add_ogs(genome_full_name, comparison_genes))
+
+## make sure locations is sorted by scaffold
+
+locations = locations[order(locations$scaffold),]
+
+outputs = c("upstream", "downstream", "closest")
+
+for (output in outputs){
+  
+  distance_column = c()
+  
+  for (scaffold in unique(locations$scaffold)){
+    locations_per_scaffold = locations[locations$scaffold == scaffold,]
+    subset_per_scaffold = comparison_genes[comparison_genes$scaffold == scaffold,]
+    distance_column = c(distance_column, apply(locations_per_scaffold,1,element_distance,output=output, subset_per_scaffold=subset_per_scaffold))
+  }
+  
+  locations[paste("gene_distance_", output, sep='')] = distance_column
+  
+}
+
+class = "any_te"
+
+if (class == "any_te"){
+  subset_per_class = comparison_tes
+} else {
+  subset_per_class = comparison_tes[comparison_tes$class == class,]
+}
+
+for (output in outputs) {
+  if (dim(subset_per_class)[1] != 0){
+    class_column = c()
+    for (scaffold in unique(locations$scaffold)){
+      locations_per_scaffold = locations[locations$scaffold == scaffold,]
+      subset_per_class_per_scaffold = subset_per_class[subset_per_class$scaffold == scaffold,]
+      if (dim(subset_per_class_per_scaffold)[1] != 0){
+        locations_per_scaffold[[class]] = apply(locations_per_scaffold,1,element_distance,output=output,
+                                                subset_per_scaffold=subset_per_class_per_scaffold)
+      } else {
+        locations_per_scaffold[[class]] = NA ## if there are no TEs of that class in that genome then set all to NA
+      }
+      class_column = c(class_column, locations_per_scaffold[[class]])
+    }
+    locations[paste(class, "_distance_", output, sep='')] = class_column
+  } else {
+    locations[paste(class, "_distance_", output, sep='')] = NA ## if there are no TEs of that class in that genome then set all to NA
+  }
+}
+
+```
+
+```{r}
+chromsizes <- read_chromsizes(genome_full_name)
+
+distance_te = 5000
+
+locations$enough_space_te = apply(locations,1,enough_space,distance=distance_te)
+
+distance_gene = 1000
+
+locations$enough_space_gene = apply(locations,1,enough_space,distance=distance_gene)
+
+class = "any_te"
+
+if (class == "any_te"){
+  subset_per_class = comparison_tes
+} else {
+  subset_per_class = comparison_tes[comparison_tes$class == class,]
+}
+if (dim(subset_per_class)[1] != 0){
+  class_column = c()
+  for (scaffold in unique(locations$scaffold)){
+    locations_per_scaffold = locations[locations$scaffold == scaffold,]
+    subset_per_class_per_scaffold = subset_per_class[subset_per_class$scaffold == scaffold,]
+    if (dim(subset_per_class_per_scaffold)[1] != 0){
+      locations_per_scaffold[[class]] = apply(locations_per_scaffold,1,nearby_te_per_class,distance=distance_te)
+    } else {
+      locations_per_scaffold[[class]][locations_per_scaffold$enough_space_te == TRUE] = FALSE
+    }
+    class_column = c(class_column, locations_per_scaffold[[class]])
+  }
+  locations[[class]] = class_column
+} else {
+  locations[[class]][locations$enough_space_te == TRUE] = FALSE ## if there are no TEs of that class in that genome then set all to FALSE
+}
+
+gene_column = c()
+
+for (scaffold in unique(locations$scaffold)){
+  locations_per_scaffold = locations[locations$scaffold == scaffold,]
+  subset_genes_per_scaffold = comparison_genes[comparison_genes$scaffold == scaffold,]
+  # there will always be at least one gene...
+  gene_column = c(gene_column, apply(locations_per_scaffold,1,nearby_gene,distance=distance_gene))
+}
+
+locations['gene_nearby'] = gene_column
+
+```
+
+## FULL RUN ###
+
+```{r}
+df_distance_info <- data.frame(matrix(ncol = 20, nrow = 0))
+
+colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
+                            "gene_distance_upstream", "gene_distance_downstream", "gene_distance_closest",
+                            "any_te_distance_upstream", "any_te_distance_downstream", "any_te_distance_closest",
+                            "enough_space_te", "enough_space_gene",
+                            "any_te", "gene_nearby",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage"
+                            )
+
+for (lineage in c(2,3,4)) {
+  genome_list <- lineage_info$isolate[lineage_info$lineage == lineage]
+  
+  conserved_file <- paste('../pipeline_methods/conserved_ogs_', lineage, '.txt', sep = '')
+  
+  conserved_ogs <- read.table(conserved_file, header=FALSE, sep='\t')
+  
+  conserved_ogs <- conserved_ogs$V1
+  
+  pav_file <- paste('../pipeline_methods/actual_pav_ogs_', lineage,'.txt', sep ='')
+  
+  pav_ogs <- read.table(pav_file, header=FALSE, sep='\t')
+  
+  pav_ogs <- pav_ogs$V1
+  
+  for (index in seq(from = 1, to = length(genome_list))){
+    
+    genome <- genome_list[index]
+    
+    genome_full_name <- genome
+    
+    print(genome)
+    
+    locations <- read_locations(genome)
+    comparison_tes <- read_comparison_te(genome)
+    comparison_genes <- read_comparison_gene(genome)
+    
+    # add og information to locations AND comparison
+    locations$orthogroups <- suppressWarnings(add_ogs(genome_full_name, locations))
+    # drop genes without ogs
+    locations <- locations[! (is.na(locations$orthogroups)),]
+    comparison_genes$orthogroups <- suppressWarnings(add_ogs(genome_full_name, comparison_genes))
+    
+    ## make sure locations is sorted by scaffold
+    
+    locations = locations[order(locations$scaffold),]
+    
+    outputs = c("upstream", "downstream", "closest")
+    
+    for (output in outputs){
+      
+      distance_column = c()
+      
+      for (scaffold in unique(locations$scaffold)){
+        locations_per_scaffold = locations[locations$scaffold == scaffold,]
+        subset_per_scaffold = comparison_genes[comparison_genes$scaffold == scaffold,]
+        distance_column = c(distance_column, apply(locations_per_scaffold,1,element_distance,output=output,
+                                                   subset_per_scaffold=subset_per_scaffold))
+      }
+      
+      locations[paste("gene_distance_", output, sep='')] = distance_column
+      
+    }
+    
+    class = "any_te"
+    
+    if (class == "any_te"){
+      subset_per_class = comparison_tes
+    } else {
+      subset_per_class = comparison_tes[comparison_tes$class == class,]
+    }
+    
+    for (output in outputs) {
+      if (dim(subset_per_class)[1] != 0){
+        class_column = c()
+        for (scaffold in unique(locations$scaffold)){
+          locations_per_scaffold = locations[locations$scaffold == scaffold,]
+          subset_per_class_per_scaffold = subset_per_class[subset_per_class$scaffold == scaffold,]
+          if (dim(subset_per_class_per_scaffold)[1] != 0){
+            locations_per_scaffold[[class]] = apply(locations_per_scaffold,1,element_distance,output=output,
+                                                    subset_per_scaffold=subset_per_class_per_scaffold)
+          } else {
+            locations_per_scaffold[[class]] = NA ## if there are no TEs of that class in that genome then set all to NA
+          }
+          class_column = c(class_column, locations_per_scaffold[[class]])
+        }
+        locations[paste(class, "_distance_", output, sep='')] = class_column
+      } else {
+        locations[paste(class, "_distance_", output, sep='')] = NA ## if there are no TEs of that class in that genome then set all to NA
+      }
+    }
+    
+    chromsizes <- read_chromsizes(genome_full_name)
+
+    distance_te = 5000
+    
+    locations$enough_space_te = apply(locations,1,enough_space,distance=distance_te)
+    
+    distance_gene = 1000
+    
+    locations$enough_space_gene = apply(locations,1,enough_space,distance=distance_gene)
+    
+    class = "any_te"
+    
+    if (class == "any_te"){
+      subset_per_class = comparison_tes
+    } else {
+      subset_per_class = comparison_tes[comparison_tes$class == class,]
+    }
+    if (dim(subset_per_class)[1] != 0){
+      class_column = c()
+      for (scaffold in unique(locations$scaffold)){
+        locations_per_scaffold = locations[locations$scaffold == scaffold,]
+        subset_per_class_per_scaffold = subset_per_class[subset_per_class$scaffold == scaffold,]
+        if (dim(subset_per_class_per_scaffold)[1] != 0){
+          locations_per_scaffold[[class]] = apply(locations_per_scaffold,1,nearby_te_per_class,distance=distance_te)
+        } else {
+          locations_per_scaffold[[class]][locations_per_scaffold$enough_space_te == TRUE] = FALSE
+        }
+        class_column = c(class_column, locations_per_scaffold[[class]])
+      }
+      locations[[class]] = class_column
+    } else {
+      locations[[class]][locations$enough_space_te == TRUE] = FALSE ## if there are no TEs of that class in that genome then set all to FALSE
+    }
+    
+    gene_column = c()
+    
+    for (scaffold in unique(locations$scaffold)){
+      locations_per_scaffold = locations[locations$scaffold == scaffold,]
+      subset_genes_per_scaffold = comparison_genes[comparison_genes$scaffold == scaffold,]
+      # there will always be at least one gene...
+      gene_column = c(gene_column, apply(locations_per_scaffold,1,nearby_gene,distance=distance_gene))
+    }
+    
+    locations['gene_nearby'] = gene_column
+    
+    locations$lineage_conserved <- locations$orthogroups %in% conserved_ogs
+    
+    locations$lineage_pav <- locations$orthogroups %in% pav_ogs
+    
+    locations$genome <- genome
+    
+    locations$lineage <- lineage
+    
+    # reorder before merging with the rest
+    locations <- locations[,colnames(df_distance_info)]
+
+    df_distance_info <- rbind(df_distance_info, locations)
+
+    
+  }
+  
+}
+
+```
+
+```{r}
+
+output.file <- file('gene_distance_info.txt', "wb") ## to get unix line endings
+
+write.table(df_distance_info, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+close(output.file)
+
+```
+
+## START RE-RUN HERE ###
+
+```{r}
+
+df_distance_info <- data.frame(fread('gene_distance_info.txt'))
+
+colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
+                            "gene_distance_upstream", "gene_distance_downstream", "gene_distance_closest",
+                            "any_te_distance_upstream", "any_te_distance_downstream", "any_te_distance_closest",
+                            "enough_space_te", "enough_space_gene",
+                            "any_te", "gene_nearby",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage"
+                            )
+
+```
+
+```{r}
+
+filter_columns = c(
+  'lineage_pav',
+  'lineage_conserved',
+  'lineage_pav',
+  'lineage_conserved'
+)
+
+plot_columns_list = list(
+  c("gene_distance_upstream", "gene_distance_downstream"),
+  c("gene_distance_upstream", "gene_distance_downstream"),
+  c("any_te_distance_upstream", "any_te_distance_downstream"),
+  c("any_te_distance_upstream", "any_te_distance_downstream")
+)
+
+axis_labels = c(
+  "Gene",
+  "Gene",
+  "TE",
+  "TE"
+)
+
+colors = c(
+  "Reds",
+  "Blues",
+  "Reds",
+  "Blues"
+)
+
+legend_labels = c(
+  "PAV",
+  "Conserved",
+  "PAV",
+  "Conserved"
+)
+
+```
+
+
+
+```{r}
+
+for (i in seq(from = 1, to = length(filter_columns))){
+  
+  filter_column = filter_columns[i]
+  plot_columns = unlist(plot_columns_list[i])
+  axis_label = axis_labels[i]
+  color = colors[i]
+  legend_label = legend_labels[i]
+  
+  df <- df_distance_info[df_distance_info[filter_column] == TRUE,plot_columns]
+  
+  colnames(df) <- c('x','y')
+  
+  df <- na.omit(df)
+  
+  df$x <- log10(df$x)
+    
+  df$y <- log10(df$y)
+  
+  print(nrow(df))
+  
+  x_int <- median(log10(df_distance_info[plot_columns[1]])[[1]], na.rm=TRUE)
+  y_int <- median(log10(df_distance_info[plot_columns[2]])[[1]], na.rm=TRUE)
+  
+  p <- ggplot(df, aes(x=x, y=y)) +
+      stat_density_2d(aes(fill = ..level..), geom = "polygon") + # 2d density
+    scale_fill_distiller(palette = color, direction = 1) +
+    geom_segment(aes(x=x_int,
+                     xend=x_int,
+                     y=-Inf,
+                     yend=Inf), size = 0.5, linetype='dashed') +## draw median segments
+    geom_segment(aes(x=-Inf,
+                     xend=Inf,
+                     y=y_int,
+                     yend=y_int), size = 0.5, linetype='dashed') +
+    scale_x_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) + # logticks
+    scale_y_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) +
+    labs(fill = paste(legend_label, " gene density", sep ='')) +
+    xlab(paste("5' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
+    ylab(paste("3' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
+    theme_classic()+
+      theme(axis.text=element_text(size=6), axis.title=element_text(size=8), 
+        legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6))+
+    theme(legend.position="none")
+  
+  ggsave(paste(filter_column, "_",
+               strsplit(plot_columns[1], '_')[[1]][1],
+               '_',
+               strsplit(plot_columns[1], '_')[[1]][2],
+               '_3D.pdf',sep = ''), plot = p, width = 6.5/4, height = 6.5/4)
+  
+  ggsave(paste(filter_column, "_",
+             strsplit(plot_columns[1], '_')[[1]][1],
+             '_',
+             strsplit(plot_columns[1], '_')[[1]][2],
+             '_3D.tiff',sep = ''), device = "tiff", plot = p, width = 6.5/4, height = 6.5/4)
+}
+
+```
+
+```{r}
+
+
+distance_columns = c(
+  'any_te_distance_upstream',
+  'any_te_distance_downstream',
+  'gene_distance_upstream',
+  'gene_distance_downstream'
+)
+
+axis_label_starts = c(
+  '5',
+  '3',
+  '5',
+  '3'
+)
+
+
+axis_label_ends = c(
+  'TE',
+  'TE',
+  'Gene',
+  'Gene'
+)
+
+```
+
+
+
+```{r}
+
+for (i in seq(from = 1, to = length(distance_columns))){
+  
+  distance_column = distance_columns[i]
+  
+  axis_label_start = axis_label_starts[i]
+  
+  axis_label_end = axis_label_end[i]
+  
+  df <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,
+                         c('lineage_conserved', 'lineage_pav')]
+  
+  df[df==TRUE] <- 1
+  df[df==FALSE] <- 0
+  
+  w <- which(df==1, arr.ind = T)
+  df$gene_type <- toupper(names(df)[max.col(df)])
+  
+  df[df=="LINEAGE_PAV"] <- 1
+  df[df=="LINEAGE_CONSERVED"] <- 2
+  
+  df <- subset(df, select=-c(lineage_pav, lineage_conserved))
+  
+  df$distance <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,][[distance_column]]
+  
+  df <- na.omit(df)
+  
+  df$distance <- log10(df$distance)
+  
+  print(distance_column)
+  print(nrow(df[df$gene_type == 1,]))
+  print(nrow(df[df$gene_type == 2,]))
+
+  
+  p <- ggplot(df, aes(x=gene_type, y=distance, fill=gene_type)) + 
+    geom_violin() + geom_boxplot(width = 0.05, outlier.shape = NA)+
+    theme_classic()+
+    scale_x_discrete(labels=c('PAV', 'Conserved'))+
+    scale_y_continuous(breaks=0:6, labels=c("0.001", "0.01", "0.1", "1", "10", "100", "1000"), limits = c(0,6))+
+    xlab('')+
+    ylab(paste(axis_label_start, "' Distance to nearest ", axis_label_end, " (kbp)", sep ='')) +
+    theme(legend.position = "none")
+  
+  ggsave(paste(distance_column, "_",
+               'boxplot',
+               '.pdf',sep = ''), plot = p, width = 3.25, height = 3.25)
+  
+}
+
+```
+
+```{r}
+conditions = c(
+  'any_te',
+  'gene_nearby'
+)
+
+legend_labels = c(
+  'TE',
+  'Gene'
+)
+
+```
+
+```{r}
+
+for (i in seq(from = 1, to = length(conditions))){
+  condition = conditions[i]
+  
+  legend_label = legend_labels[i]
+  
+  percent_pav_true <- mean(
+    df_distance_info[[condition]][df_distance_info$lineage_pav==TRUE], na.rm = TRUE
+  )
+  
+  percent_pav_false <- 1 - percent_pav_true
+    
+  percent_conserved_true <- mean(
+     df_distance_info[[condition]][df_distance_info$lineage_conserved==TRUE], na.rm = TRUE
+  )
+  
+  percent_conserved_false <- 1 - percent_conserved_true
+  
+  
+  ## necessary for stacked barplot/percentage barplot plotting
+  vector_1 <- c(percent_pav_true,percent_pav_false, percent_conserved_true,percent_conserved_false)
+  
+  vector_2 <- c("True", "False",
+                "True", "False")
+  
+  vector_3 <- c("PAV", "PAV",
+                "Conserved", "Conserved")
+  
+  
+  plot_df <- data.frame(vector_1,vector_2,vector_3)
+  
+  plot_df$vector_2 <- factor(plot_df$vector_2,levels = c("True", "False"))
+  
+  plot_df$vector_3 <- factor(plot_df$vector_3,levels = c("PAV", "Conserved"))
+  
+  label_vector_1 <- c(
+    nrow(df_distance_info[df_distance_info$lineage_pav == TRUE & df_distance_info[condition]==FALSE,]),
+    nrow(df_distance_info[df_distance_info$lineage_pav == TRUE & df_distance_info[condition]==TRUE,]),
+    nrow(df_distance_info[df_distance_info$lineage_conserved == TRUE & df_distance_info[condition]==FALSE,]),
+    nrow(df_distance_info[df_distance_info$lineage_conserved == TRUE & df_distance_info[condition]==TRUE,])
+  )
+  
+  ## to get the labels in the proper location
+  label_vector_2 <- c(percent_pav_false*0.5, percent_pav_false+percent_pav_true*0.5,
+                       percent_conserved_false*0.5, percent_conserved_false+percent_conserved_true*0.5)
+    
+    
+  label_vector_3 <- c("PAV", "PAV",
+                "Conserved", "Conserved")
+  
+  label_df <- data.frame(label_vector_1, label_vector_2, label_vector_3)
+  
+  p <- ggplot(plot_df, aes(x = vector_3, y = vector_1, fill = vector_2)) +
+    geom_bar(stat = 'identity', position = 'fill') +
+    geom_text(data=label_df, aes(y=label_vector_2,label=label_vector_1), size=2)+
+    scale_fill_hue() +
+    theme_minimal() +
+    scale_y_continuous() + xlab("") + ylab("Percentage") +
+    scale_fill_discrete(labels=c(
+      paste(legend_label, ' Nearby', sep=''),
+      paste('No ',legend_label,' Nearby', sep='')
+    ))+
+    theme(axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())
+  
+  ggsave(paste(condition, "_",
+               'barplot',
+               '.pdf',sep = ''), plot = p, width = 3.25, height = 3.25)
+}
+
+```
+
