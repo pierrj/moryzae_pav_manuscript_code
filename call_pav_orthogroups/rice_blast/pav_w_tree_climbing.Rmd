@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2021 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "pav_w_tree_climbing"
 output: html_document
 ---
@@ -92,7 +113,7 @@ validated_pavs <- validated_pavs[validated_pavs$actuallyfound == 'no',]
 # drop col
 validated_pavs <- subset(validated_pavs, select = -c(actuallyfound))
 
-# change to dataframe with only actuallyfound no filled in
+# change to dataframe with only "actuallyfound: no" filled in
 validated_pavs <- validated_pavs %>% 
             group_by(og) %>% 
             mutate(id=row_number()) %>% 
@@ -122,6 +143,7 @@ validated_pavs[validated_pavs == 2] <- 0
 validated_pavs <- data.frame(validated_pavs)
 
 
+# fix names again
 rownames(validated_pavs) <- validated_pavs$Groups
 
 validated_pavs <- subset(validated_pavs, select = -c(Groups))
@@ -134,7 +156,7 @@ colnames(validated_pavs)[colnames(validated_pavs) == 'GCA_004355905-1_PgNI'] <- 
 
 
 
-# add missing rows
+# add missing orthogroups/rows
 
 missing_ogs <- setdiff(rownames(df),rownames(validated_pavs))
 
@@ -183,12 +205,9 @@ close(output.file)
 
 ```{r}
 
-## write PAV scores per lineage
+## write PAV scores per lineage, basically just a number of absences per og
 
 lineages <- c(2,3,4)
-
-max_lost <- 2
-min_lost <- 2
 
 for (lineage in lineages) {
   
@@ -227,6 +246,8 @@ tree <- read.tree('Single_Copy_Orthologue_Sequences_msas_combined.trimmed.fasttr
 
 tree <- drop.tip(tree,tree$tip.label[match("NI907", tree$tip.label)])
 
+
+# split tree tip label names
 str_split_vector <- function(x, string){
   output_vector <- c()
   for ( item in x ) {
@@ -353,7 +374,7 @@ for (lineage in lineages) {
 
 ```{r}
 
-## write everything
+## write everything to separate files
 
 output.file <- file('actual_pav_ogs_2.txt', "wb") ## to get unix line endings
 

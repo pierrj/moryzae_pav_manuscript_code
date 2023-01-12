@@ -1,4 +1,25 @@
 #!/bin/bash
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 
 ## this script simply updates code by copying them over from the submodules, only for the author's use for maintaining the code repo
 
@@ -133,15 +154,15 @@ TARGET_DIR=pfam_go_annotation/
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp $SLURM_SCRIPTS/pfam_scan_per_proteome.slurm $TARGET_DIR
 cp $SLURM_SCRIPTS/pannzer_single_core.slurm $TARGET_DIR
+cp $CROSS_HOST_ANALYSIS_DIR/other_params/compare_param_distributions.Rmd $TARGET_DIR
 
 ## pfam_go_enrichment
-TARGET_DIR=pfam_go_enrichment/
+TARGET_DIR=pfam_nlr_go_enrichment/
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp $RICE_BLAST_ANALYSIS_DIR/lineage_differentiating_pavs/pfam_enrichment/pfam_enrichment_plot.Rmd $TARGET_DIR
-cp $RICE_BLAST_ANALYSIS_DIR/lineage_differentiating_pavs/pfam_enrichment/pfam_enrichment.ipynb $TARGET_DIR
+cp $RICE_BLAST_ANALYSIS_DIR/lineage_differentiating_pavs/pfam_enrichment/pfam_nlr_enrichment.ipynb $TARGET_DIR
 cp $RICE_BLAST_ANALYSIS_DIR/lineage_differentiating_pavs/go_enrichment/assign_go_to_ogs_all_ogs.ipynb $TARGET_DIR
 cp $RICE_BLAST_ANALYSIS_DIR/lineage_differentiating_pavs/go_enrichment/go_enrichment.Rmd $TARGET_DIR
-cp $CROSS_HOST_ANALYSIS_DIR/other_params/compare_param_distributions.Rmd $TARGET_DIR
 
 ## phylogenies
 TARGET_DIR=phylogenies/
@@ -193,9 +214,17 @@ cp $CROSS_HOST_ANALYSIS_DIR/confusion_matrices/confusion_matrix.Rmd $TARGET_DIR
 ## random forest incorrect predictions heatmap
 TARGET_DIR=random_forest_incorrect_preds
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
-cp $CROSS_HOST_ANALYSIS_DIR/model_errors/rice_blast_model_wrong_preds.Rmd $TARGET_DIR
+cp $CROSS_HOST_ANALYSIS_DIR/model_errors/wrong_preds_heatmap.Rmd $TARGET_DIR
 cp $SLURM_SCRIPTS/rf_cross_host_output_predictions.slurm $TARGET_DIR
 cp $PYTHON_SCRIPTS/rf_perf_test_cross_host_output_preds.py $TARGET_DIR
+
+TARGET_DIR=random_forest_incorrect_preds/rice_blast
+if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
+cp $RICE_BLAST_ANALYSIS_DIR/deletion_statistics/deletion_distance.Rmd $TARGET_DIR
+
+TARGET_DIR=random_forest_incorrect_preds/wheat_blast
+if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
+cp $WHEAT_BLAST_ANALYSIS_DIR/deletion_statistics/deletion_distance.Rmd $TARGET_DIR
 
 ## random_forest_variable_dependence
 TARGET_DIR=random_forest_variable_dependence

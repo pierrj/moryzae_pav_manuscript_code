@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "pav_distances"
 output: html_document
 date: '2022-10-18'
@@ -16,14 +37,11 @@ library(data.table)
 ```{r}
 
 
-## read in files
+## read in gene file
 read_locations = function(genome) {
   # list of elements to judge the distance of, in this case genes
   
   locations_file = paste("../random_forest/all_gffs_fixed/",genome,"_fungap_out.fixed.gff3", sep='')
-  
-  # list of elements to judge the distance to, in this case genes again
-  
   
   # read in file
   # just genes and their location and orientation
@@ -42,7 +60,7 @@ read_locations = function(genome) {
   return(locations)
 }
 
-## read in comparison tes
+## read in te locations for comparison
 read_comparison_te = function(genome) {
   comparison_file = paste("../random_forest/te_annotations/", genome,".w_class.gff", sep='')
     
@@ -55,7 +73,7 @@ read_comparison_te = function(genome) {
   return(comparison)
 }
 
-## read in comparison genes
+## read in gene locations for comparison
 read_comparison_gene = function(genome) {
   comparison_file = paste("../random_forest/all_gffs_fixed/",genome,"_fungap_out.fixed.gff3", sep='')
     
@@ -111,6 +129,7 @@ strsplit_sapply = function(gene_string){
   return(length(strsplit(gene_string, ', ')[[1]]))
 }
 
+## calculate distance to nearest element
 element_distance = function(x, output, subset_per_scaffold) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -167,7 +186,7 @@ read_chromsizes = function(genome) {
   return(chromsizes)
 }
 
-## check if there is enough space around the gene to call
+## check if there is enough space around the gene to call true/false nearby
 enough_space = function(x, distance) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -180,7 +199,7 @@ enough_space = function(x, distance) {
   }
 }
 
-## check if a te is nearby or not
+# call if a te is nearby true/false
 nearby_te_per_class = function(x, class, distance) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -199,6 +218,7 @@ nearby_te_per_class = function(x, class, distance) {
   }
 }
 
+# call if a gene is nearby true/false
 nearby_gene = function(x, class, distance) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -253,6 +273,8 @@ colnames(lineage_info) <- c('isolate', 'lineage')
 ```
 
 ```{r}
+
+## need full genome names here to find the actual files
 full_names <- c(
 'GCA_002218425.1_Py22.1',
 'GCA_905114705.1_Assembly_of_M.oryzae_isolate_NG0104_genome',
@@ -483,6 +505,8 @@ locations['gene_nearby'] = gene_column
 ## FULL RUN ###
 
 ```{r}
+
+# pre-set up df to fill it with gene info later
 df_distance_info <- data.frame(matrix(ncol = 20, nrow = 0))
 
 colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
@@ -497,11 +521,16 @@ colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id",
 for (lineage in c(1,2)) {
   genome_list <- lineage_info$isolate[lineage_info$lineage == lineage]
   
+  # read in conserved ogs for lineage
+
+  
   conserved_file <- paste('../pipeline_methods/conserved_ogs_', lineage, '.txt', sep = '')
   
   conserved_ogs <- read.table(conserved_file, header=FALSE, sep='\t')
   
   conserved_ogs <- conserved_ogs$V1
+  
+  # read in pav ogs for lineage
   
   pav_file <- paste('../pipeline_methods/actual_pav_ogs_', lineage,'.txt', sep ='')
   
@@ -516,7 +545,7 @@ for (lineage in c(1,2)) {
     genome_full_name <- full_names[grep(substr(genome,4, nchar(genome)), full_names)]
     
     print(genome)
-    
+    # read in files for comparisons
     locations <- read_locations(genome_full_name)
     comparison_tes <- read_comparison_te(genome_full_name)
     comparison_genes <- read_comparison_gene(genome_full_name)
@@ -533,6 +562,7 @@ for (lineage in c(1,2)) {
     
     outputs = c("upstream", "downstream", "closest")
     
+    # calculate distance to nearest gene for all genes
     for (output in outputs){
       
       distance_column = c()
@@ -548,7 +578,7 @@ for (lineage in c(1,2)) {
       
     }
     
-    class = "any_te"
+    class = "any_te" ## only do all tes, not specific te classes
     
     if (class == "any_te"){
       subset_per_class = comparison_tes
@@ -576,8 +606,10 @@ for (lineage in c(1,2)) {
       }
     }
     
+    # read in chromsizes file to get ending of scaffold locations (useful to check if enough space is there)
     chromsizes <- read_chromsizes(genome_full_name)
 
+    # set minimum distance to call whether a te/gene gene is nearby
     distance_te = 5000
     
     locations$enough_space_te = apply(locations,1,enough_space,distance=distance_te)
@@ -586,8 +618,10 @@ for (lineage in c(1,2)) {
     
     locations$enough_space_gene = apply(locations,1,enough_space,distance=distance_gene)
     
-    class = "any_te"
-    
+    class = "any_te" ## only do all tes, not specific te classes
+
+    ## loop per scaffold to speed things up
+    # call true/false whether a te is nearby
     if (class == "any_te"){
       subset_per_class = comparison_tes
     } else {
@@ -612,6 +646,8 @@ for (lineage in c(1,2)) {
     
     gene_column = c()
     
+    ## loop per scaffold to speed things up
+    # call true/false whether a gene is nearby
     for (scaffold in unique(locations$scaffold)){
       locations_per_scaffold = locations[locations$scaffold == scaffold,]
       subset_genes_per_scaffold = comparison_genes[comparison_genes$scaffold == scaffold,]

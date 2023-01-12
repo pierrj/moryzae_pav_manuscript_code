@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "deletion_lengths"
 output: html_document
 date: '2022-11-10'
@@ -11,6 +32,7 @@ library(ggplot2)
 
 ```{r}
 
+## read in deletion bed files for wheat blast and rice blast
 df_rice <- data.frame(fread('../../pav_newest_gladieux_only_fungap/sv_callers/all_DEL.bed'))
 
 colnames(df_rice) <- c('scaffold', 'start', 'end')
@@ -23,9 +45,12 @@ df_wheat <- data.frame(fread('../../pav_newest_wheat_blast_all/sv_callers/all_DE
 
 colnames(df_wheat) <- c('scaffold', 'start', 'end')
 
+# get deletion lengths
 df_wheat$length <- df_wheat$end - df_wheat$start
 
 df_wheat$host <- "Wheat Blast" 
+
+# combine dfs
 
 plot_df <- rbind(df_rice, df_wheat)
 
@@ -50,6 +75,7 @@ median(df_wheat$length)
 
 ```{r}
 
+# plot length densities
 p <- ggplot(data=plot_df, aes(x=length, color=host)) +
     stat_density(geom="line",position="identity",adjust=5)+
   ylab('Density')+

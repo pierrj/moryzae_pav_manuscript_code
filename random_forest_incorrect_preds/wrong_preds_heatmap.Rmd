@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "rice_blast_model_wrong_preds"
 output: html_document
 date: '2022-11-11'
@@ -16,6 +37,8 @@ library(ggnewscale)
 
 ```{r}
 
+# start with wheat blast first, with predictions from rice blast model appended
+
 df <-data.frame(fread('cross_host_rice_first_input_df2_with_predictions.txt'))
 
 
@@ -29,6 +52,7 @@ df_model_errors <- data.frame(c(genes_tp, genes_fn),
 colnames(df_model_errors) <- c('id', 'model_result')
 
 
+## get distances to nearest pav gene for wheat blast
 df_distance_info <-data.frame(fread(
   '../../pav_newest_wheat_blast_all/deletion_statistics/gene_deletion_distance_info.txt'))
 
@@ -45,6 +69,7 @@ df_model_errors <- merge(df_model_errors, df_distance_info, by = "id", all.x = T
 
 df_model_errors <- subset(df_model_errors, select = c(id, model_result, pav_gene_distance_upstream, pav_gene_distance_downstream))
 
+# log10 of distance
 df_model_errors$pav_gene_distance_downstream <- log10(df_model_errors$pav_gene_distance_downstream)
 
 df_model_errors$pav_gene_distance_upstream <- log10(df_model_errors$pav_gene_distance_upstream)
@@ -60,11 +85,14 @@ df <- df_model_errors
 
 ```{r}
 
+# make 2d scatter plot for model errors
+
 axis_label = 'PAV Gene'
 
 p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
   stat_density_2d(data = ~ subset(., model_results=="True Positives"),aes(fill = ..level..), geom = "polygon") + # 2d density
   scale_fill_distiller(palette = "Blues", direction = 1) +
+  # new scale fill to get different colors for TP/FNs
   new_scale_fill() +
   stat_density_2d(data = ~ subset(., model_results=="False Negatives"),aes(fill = ..level..), geom = "polygon") + # 2d density
   scale_fill_distiller(palette = "Oranges", direction = 1) +
@@ -89,6 +117,8 @@ ggsave(paste("facetgrid_model_error_rice_first_3D.pdf",sep = ''), device = "pdf"
 
 ```{r}
 
+
+# now with rice blast, with predictions from wheat blast model appended
 df <-data.frame(fread('cross_host_wheat_first_input_df2_with_predictions.txt'))
 
 
@@ -102,6 +132,7 @@ df_model_errors <- data.frame(c(genes_tp, genes_fp),
 colnames(df_model_errors) <- c('id', 'model_result')
 
 
+## get distances to nearest pav gene for rice blast
 df_distance_info <-data.frame(fread(
   '../../pav_newest_gladieux_only_fungap/deletion_statistics/gene_deletion_distance_info.txt'))
 
@@ -118,6 +149,7 @@ df_model_errors <- merge(df_model_errors, df_distance_info, by = "id", all.x = T
 
 df_model_errors <- subset(df_model_errors, select = c(id, model_result, pav_gene_distance_upstream, pav_gene_distance_downstream))
 
+# log10 of distance
 df_model_errors$pav_gene_distance_downstream <- log10(df_model_errors$pav_gene_distance_downstream)
 
 df_model_errors$pav_gene_distance_upstream <- log10(df_model_errors$pav_gene_distance_upstream)
@@ -132,11 +164,14 @@ df <- df_model_errors
 
 ```{r}
 
+# make 2d scatter plot for model errors
+
 axis_label = 'PAV Gene'
 
 p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
   stat_density_2d(data = ~ subset(., model_results=="True Positives"),aes(fill = ..level..), geom = "polygon") + # 2d density
   scale_fill_distiller(palette = "Blues", direction = 1) +
+  # new scale fill to get different colors for TP/FPs
   new_scale_fill() +
   stat_density_2d(data = ~ subset(., model_results=="False Positives"),aes(fill = ..level..), geom = "polygon") + # 2d density
   scale_fill_distiller(palette = "Oranges", direction = 1) +

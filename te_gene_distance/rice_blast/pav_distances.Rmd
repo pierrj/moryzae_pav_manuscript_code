@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "pav_distances"
 output: html_document
 date: '2022-10-18'
@@ -9,21 +30,17 @@ date: '2022-10-18'
 library(ggplot2)
 library(tidyr)
 library(data.table)
-library(ggnewscale)
 
 ```
 
 ```{r}
 
 
-## read in files
+## read in gene file
 read_locations = function(genome) {
   # list of elements to judge the distance of, in this case genes
   
   locations_file = paste("../random_forest/all_gffs_fixed/",genome,"_fungap_out.fixed.gff3", sep='')
-  
-  # list of elements to judge the distance to, in this case genes again
-  
   
   # read in file
   # just genes and their location and orientation
@@ -42,7 +59,7 @@ read_locations = function(genome) {
   return(locations)
 }
 
-## read in comparison tes
+## read in te locations for comparison
 read_comparison_te = function(genome) {
   comparison_file = paste("../random_forest/te_annotations/", genome,".w_class.gff", sep='')
     
@@ -55,7 +72,7 @@ read_comparison_te = function(genome) {
   return(comparison)
 }
 
-## read in comparison genes
+## read in gene locations for comparison
 read_comparison_gene = function(genome) {
   comparison_file = paste("../random_forest/all_gffs_fixed/",genome,"_fungap_out.fixed.gff3", sep='')
     
@@ -111,6 +128,7 @@ strsplit_sapply = function(gene_string){
   return(length(strsplit(gene_string, ', ')[[1]]))
 }
 
+## calculate distance to nearest element
 element_distance = function(x, output, subset_per_scaffold) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -167,7 +185,7 @@ read_chromsizes = function(genome) {
   return(chromsizes)
 }
 
-## check if there is enough space around the gene to call
+## check if there is enough space around the gene to call true/false nearby
 enough_space = function(x, distance) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -180,7 +198,7 @@ enough_space = function(x, distance) {
   }
 }
 
-## check if a te is nearby or not
+# call if a te is nearby true/false
 nearby_te_per_class = function(x, class, distance) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -199,6 +217,7 @@ nearby_te_per_class = function(x, class, distance) {
   }
 }
 
+# call if a gene is nearby true/false
 nearby_gene = function(x, class, distance) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -400,6 +419,8 @@ locations['gene_nearby'] = gene_column
 ## FULL RUN ###
 
 ```{r}
+
+# pre-set up df to fill it with gene info later
 df_distance_info <- data.frame(matrix(ncol = 20, nrow = 0))
 
 colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
@@ -413,12 +434,17 @@ colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id",
 
 for (lineage in c(2,3,4)) {
   genome_list <- lineage_info$isolate[lineage_info$lineage == lineage]
+
+  # read in conserved ogs for lineage
+
   
   conserved_file <- paste('../pipeline_methods/conserved_ogs_', lineage, '.txt', sep = '')
   
   conserved_ogs <- read.table(conserved_file, header=FALSE, sep='\t')
   
   conserved_ogs <- conserved_ogs$V1
+  
+  # read in pav ogs for lineage
   
   pav_file <- paste('../pipeline_methods/actual_pav_ogs_', lineage,'.txt', sep ='')
   
@@ -433,7 +459,7 @@ for (lineage in c(2,3,4)) {
     genome_full_name <- genome
     
     print(genome)
-    
+    # read in files for comparisons
     locations <- read_locations(genome)
     comparison_tes <- read_comparison_te(genome)
     comparison_genes <- read_comparison_gene(genome)
@@ -450,6 +476,7 @@ for (lineage in c(2,3,4)) {
     
     outputs = c("upstream", "downstream", "closest")
     
+    # calculate distance to nearest gene for all genes
     for (output in outputs){
       
       distance_column = c()
@@ -465,7 +492,7 @@ for (lineage in c(2,3,4)) {
       
     }
     
-    class = "any_te"
+    class = "any_te" ## only do all tes, not specific te classes
     
     if (class == "any_te"){
       subset_per_class = comparison_tes
@@ -493,8 +520,9 @@ for (lineage in c(2,3,4)) {
       }
     }
     
+    # read in chromsizes file to get ending of scaffold locations (useful to check if enough space is there)
     chromsizes <- read_chromsizes(genome_full_name)
-
+    # set minimum distance to call whether a te/gene gene is nearby
     distance_te = 5000
     
     locations$enough_space_te = apply(locations,1,enough_space,distance=distance_te)
@@ -503,8 +531,10 @@ for (lineage in c(2,3,4)) {
     
     locations$enough_space_gene = apply(locations,1,enough_space,distance=distance_gene)
     
-    class = "any_te"
-    
+    class = "any_te" ## only do all tes, not specific te classes
+  
+    ## loop per scaffold to speed things up
+    # call true/false whether a te is nearby
     if (class == "any_te"){
       subset_per_class = comparison_tes
     } else {
@@ -528,7 +558,9 @@ for (lineage in c(2,3,4)) {
     }
     
     gene_column = c()
-    
+
+    ## loop per scaffold to speed things up
+    # call true/false whether a gene is nearby
     for (scaffold in unique(locations$scaffold)){
       locations_per_scaffold = locations[locations$scaffold == scaffold,]
       subset_genes_per_scaffold = comparison_genes[comparison_genes$scaffold == scaffold,]
@@ -567,289 +599,3 @@ write.table(df_distance_info, file = output.file, quote = FALSE, col.names = FAL
 close(output.file)
 
 ```
-
-## START RE-RUN HERE ###
-
-```{r}
-
-df_distance_info <- data.frame(fread('gene_distance_info.txt'))
-
-colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
-                            "gene_distance_upstream", "gene_distance_downstream", "gene_distance_closest",
-                            "any_te_distance_upstream", "any_te_distance_downstream", "any_te_distance_closest",
-                            "enough_space_te", "enough_space_gene",
-                            "any_te", "gene_nearby",
-                            "lineage_conserved", "lineage_pav",
-                            "genome", "lineage"
-                            )
-
-```
-
-```{r}
-
-filter_columns = c(
-  'lineage_pav',
-  'lineage_conserved',
-  'lineage_pav',
-  'lineage_conserved'
-)
-
-plot_columns_list = list(
-  c("gene_distance_upstream", "gene_distance_downstream"),
-  c("gene_distance_upstream", "gene_distance_downstream"),
-  c("any_te_distance_upstream", "any_te_distance_downstream"),
-  c("any_te_distance_upstream", "any_te_distance_downstream")
-)
-
-axis_labels = c(
-  "Gene",
-  "Gene",
-  "TE",
-  "TE"
-)
-
-colors = c(
-  "Reds",
-  "Blues",
-  "Reds",
-  "Blues"
-)
-
-legend_labels = c(
-  "PAV",
-  "Conserved",
-  "PAV",
-  "Conserved"
-)
-
-```
-
-
-
-```{r}
-
-for (i in seq(from = 1, to = length(filter_columns))){
-  
-  filter_column = filter_columns[i]
-  plot_columns = unlist(plot_columns_list[i])
-  axis_label = axis_labels[i]
-  color = colors[i]
-  legend_label = legend_labels[i]
-  
-  df <- df_distance_info[df_distance_info[filter_column] == TRUE,plot_columns]
-  
-  colnames(df) <- c('x','y')
-  
-  df <- na.omit(df)
-  
-  df$x <- log10(df$x)
-    
-  df$y <- log10(df$y)
-  
-  print(nrow(df))
-  
-  x_int <- median(log10(df_distance_info[plot_columns[1]])[[1]], na.rm=TRUE)
-  y_int <- median(log10(df_distance_info[plot_columns[2]])[[1]], na.rm=TRUE)
-  
-  p <- ggplot(df, aes(x=x, y=y)) +
-      stat_density_2d(aes(fill = ..level..), geom = "polygon") + # 2d density
-    scale_fill_distiller(palette = color, direction = 1) +
-    geom_segment(aes(x=x_int,
-                     xend=x_int,
-                     y=-Inf,
-                     yend=Inf), size = 0.5, linetype='dashed') +## draw median segments
-    geom_segment(aes(x=-Inf,
-                     xend=Inf,
-                     y=y_int,
-                     yend=y_int), size = 0.5, linetype='dashed') +
-    scale_x_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) + # logticks
-    scale_y_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) +
-    labs(fill = paste(legend_label, " gene density", sep ='')) +
-    xlab(paste("5' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
-    ylab(paste("3' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
-    theme_classic()+
-      theme(axis.text=element_text(size=6), axis.title=element_text(size=8), 
-        legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6))+
-    theme(legend.position="none")
-  
-  ggsave(paste(filter_column, "_",
-               strsplit(plot_columns[1], '_')[[1]][1],
-               '_',
-               strsplit(plot_columns[1], '_')[[1]][2],
-               '_3D.pdf',sep = ''), plot = p, width = 6.5/4, height = 6.5/4)
-  
-  ggsave(paste(filter_column, "_",
-             strsplit(plot_columns[1], '_')[[1]][1],
-             '_',
-             strsplit(plot_columns[1], '_')[[1]][2],
-             '_3D.tiff',sep = ''), device = "tiff", plot = p, width = 6.5/4, height = 6.5/4)
-}
-
-```
-
-```{r}
-
-
-distance_columns = c(
-  'any_te_distance_upstream',
-  'any_te_distance_downstream',
-  'gene_distance_upstream',
-  'gene_distance_downstream'
-)
-
-axis_label_starts = c(
-  '5',
-  '3',
-  '5',
-  '3'
-)
-
-
-axis_label_ends = c(
-  'TE',
-  'TE',
-  'Gene',
-  'Gene'
-)
-
-```
-
-
-
-```{r}
-
-for (i in seq(from = 1, to = length(distance_columns))){
-  
-  distance_column = distance_columns[i]
-  
-  axis_label_start = axis_label_starts[i]
-  
-  axis_label_end = axis_label_end[i]
-  
-  df <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,
-                         c('lineage_conserved', 'lineage_pav')]
-  
-  df[df==TRUE] <- 1
-  df[df==FALSE] <- 0
-  
-  w <- which(df==1, arr.ind = T)
-  df$gene_type <- toupper(names(df)[max.col(df)])
-  
-  df[df=="LINEAGE_PAV"] <- 1
-  df[df=="LINEAGE_CONSERVED"] <- 2
-  
-  df <- subset(df, select=-c(lineage_pav, lineage_conserved))
-  
-  df$distance <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,][[distance_column]]
-  
-  df <- na.omit(df)
-  
-  df$distance <- log10(df$distance)
-  
-  print(distance_column)
-  print(nrow(df[df$gene_type == 1,]))
-  print(nrow(df[df$gene_type == 2,]))
-
-  
-  p <- ggplot(df, aes(x=gene_type, y=distance, fill=gene_type)) + 
-    geom_violin() + geom_boxplot(width = 0.05, outlier.shape = NA)+
-    theme_classic()+
-    scale_x_discrete(labels=c('PAV', 'Conserved'))+
-    scale_y_continuous(breaks=0:6, labels=c("0.001", "0.01", "0.1", "1", "10", "100", "1000"), limits = c(0,6))+
-    xlab('')+
-    ylab(paste(axis_label_start, "' Distance to nearest ", axis_label_end, " (kbp)", sep ='')) +
-    theme(legend.position = "none")
-  
-  ggsave(paste(distance_column, "_",
-               'boxplot',
-               '.pdf',sep = ''), plot = p, width = 3.25, height = 3.25)
-  
-}
-
-```
-
-```{r}
-conditions = c(
-  'any_te',
-  'gene_nearby'
-)
-
-legend_labels = c(
-  'TE',
-  'Gene'
-)
-
-```
-
-```{r}
-
-for (i in seq(from = 1, to = length(conditions))){
-  condition = conditions[i]
-  
-  legend_label = legend_labels[i]
-  
-  percent_pav_true <- mean(
-    df_distance_info[[condition]][df_distance_info$lineage_pav==TRUE], na.rm = TRUE
-  )
-  
-  percent_pav_false <- 1 - percent_pav_true
-    
-  percent_conserved_true <- mean(
-     df_distance_info[[condition]][df_distance_info$lineage_conserved==TRUE], na.rm = TRUE
-  )
-  
-  percent_conserved_false <- 1 - percent_conserved_true
-  
-  
-  ## necessary for stacked barplot/percentage barplot plotting
-  vector_1 <- c(percent_pav_true,percent_pav_false, percent_conserved_true,percent_conserved_false)
-  
-  vector_2 <- c("True", "False",
-                "True", "False")
-  
-  vector_3 <- c("PAV", "PAV",
-                "Conserved", "Conserved")
-  
-  
-  plot_df <- data.frame(vector_1,vector_2,vector_3)
-  
-  plot_df$vector_2 <- factor(plot_df$vector_2,levels = c("True", "False"))
-  
-  plot_df$vector_3 <- factor(plot_df$vector_3,levels = c("PAV", "Conserved"))
-  
-  label_vector_1 <- c(
-    nrow(df_distance_info[df_distance_info$lineage_pav == TRUE & df_distance_info[condition]==FALSE,]),
-    nrow(df_distance_info[df_distance_info$lineage_pav == TRUE & df_distance_info[condition]==TRUE,]),
-    nrow(df_distance_info[df_distance_info$lineage_conserved == TRUE & df_distance_info[condition]==FALSE,]),
-    nrow(df_distance_info[df_distance_info$lineage_conserved == TRUE & df_distance_info[condition]==TRUE,])
-  )
-  
-  ## to get the labels in the proper location
-  label_vector_2 <- c(percent_pav_false*0.5, percent_pav_false+percent_pav_true*0.5,
-                       percent_conserved_false*0.5, percent_conserved_false+percent_conserved_true*0.5)
-    
-    
-  label_vector_3 <- c("PAV", "PAV",
-                "Conserved", "Conserved")
-  
-  label_df <- data.frame(label_vector_1, label_vector_2, label_vector_3)
-  
-  p <- ggplot(plot_df, aes(x = vector_3, y = vector_1, fill = vector_2)) +
-    geom_bar(stat = 'identity', position = 'fill') +
-    geom_text(data=label_df, aes(y=label_vector_2,label=label_vector_1), size=2)+
-    scale_fill_hue() +
-    theme_minimal() +
-    scale_y_continuous() + xlab("") + ylab("Percentage") +
-    scale_fill_discrete(labels=c(
-      paste(legend_label, ' Nearby', sep=''),
-      paste('No ',legend_label,' Nearby', sep='')
-    ))+
-    theme(axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())
-  
-  ggsave(paste(condition, "_",
-               'barplot',
-               '.pdf',sep = ''), plot = p, width = 3.25, height = 3.25)
-}
-
-```
-

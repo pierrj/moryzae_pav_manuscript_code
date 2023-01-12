@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "cor_matrices"
 output: html_document
 date: '2022-12-02'
@@ -14,6 +35,7 @@ library(psych)
 
 ```{r}
 
+# separate continuous and categorical columns
 cont_cols <- c(
 'gene_gc',
 'flanking_1kb_gc',
@@ -42,10 +64,13 @@ cat_cols <- c(
 
 ```{r}
 
+# continuous columns only
+
 df <- data.frame(fread('../gene_info.full_model.rice_blast.txt'))
 df <- subset(df, select = c(cont_cols))
 df <- df[, rev(colnames(df))]
 
+# fix variable names
 colnames(df)[colnames(df) == 'H3K27me3'] <- 'H3K27me3 Signal'
 colnames(df)[colnames(df) == 'lengths'] <- 'Gene length'
 colnames(df)[colnames(df) == 'flanking_1kb_gc'] <- 'Flanking AT Content'
@@ -68,15 +93,19 @@ colnames(df)[colnames(df) == 'effectorp'] <- 'Is Predicted Effector?'
 
 ```{r}
 
+# calculate spearman correlation matrix
 cormat <- round(cor(df, method="spearman"),2)
 cormat[lower.tri(cormat)] <- NA
 cormat <- melt(cormat,na.rm=TRUE)
 
+# set 1.00 to NA for plot
 cormat[cormat == 1.00] <- NA
 
 ```
 
 ```{r}
+
+## plot heatmap with text within the boxes
 p <- ggplot(data = cormat, aes(Var2, Var1, fill = value))+
   geom_tile(color = "white")+
   scale_fill_gradient2(low = "blue", high = "red", mid = "white",
@@ -106,10 +135,13 @@ ggsave('continuous_cor_matrix.pdf', plot = p, width = 6.5/2, height = 6.5/2)
 
 
 ```{r}
+
+# categorical columns only
 df <- data.frame(fread('../gene_info.full_model.rice_blast.txt'))
 df <- subset(df, select = c(cat_cols))
 df <- df[, rev(colnames(df))]
 
+# fix variable names
 colnames(df)[colnames(df) == 'H3K27me3'] <- 'H3K27me3 Signal'
 colnames(df)[colnames(df) == 'lengths'] <- 'Gene length'
 colnames(df)[colnames(df) == 'flanking_1kb_gc'] <- 'Flanking AT Content'
@@ -134,6 +166,7 @@ colnames(df)[colnames(df) == 'effectorp'] <- 'Is Predicted Effector?'
 
 ```{r}
 
+# calculate phi correlation coefficient matrix 
 phi_mat <- data.frame(matrix(, nrow=length(colnames(df)), ncol=length(colnames(df))))
 
 colnames(phi_mat) <- colnames(df)
@@ -150,10 +183,12 @@ for (x in colnames(df)) {
 
 ```
 ```{r}
+
 phi_mat <- as.matrix(phi_mat)
 phi_mat[lower.tri(phi_mat)] <- NA
 phi_mat <- melt(phi_mat,na.rm=TRUE)
 
+# set 1.00 to NA for plot
 phi_mat[phi_mat == 1.00] <- NA
 
 
@@ -161,6 +196,7 @@ phi_mat[phi_mat == 1.00] <- NA
 
 
 ```{r}
+## plot heatmap with text within the boxes
 p <- ggplot(data = phi_mat, aes(Var2, Var1, fill = value))+
   geom_tile(color = "white")+
   scale_fill_gradient2(low = "blue", high = "red", mid = "white",
@@ -211,6 +247,8 @@ colnames(df)[colnames(df) == 'effectorp'] <- 'Is Predicted Effector?'
 ```
 
 ```{r}
+
+## rename categorical and continuous columns
 cat_cols[cat_cols == 'H3K27me3'] <- 'H3K27me3 Signal'
 cat_cols[cat_cols == 'lengths'] <- 'Gene length'
 cat_cols[cat_cols == 'flanking_1kb_gc'] <- 'Flanking AT Content'
@@ -251,6 +289,8 @@ cont_cols[cont_cols == 'effectorp'] <- 'Is Predicted Effector?'
 
 
 ```{r}
+
+## calculate pbcor matrix
 pbcor_mat <- data.frame(matrix(, nrow=length(cont_cols), ncol=length(cat_cols)))
 
 
@@ -272,6 +312,7 @@ pbcor_mat <- melt(as.matrix(pbcor_mat))
 
 ```{r}
 
+## plot heatmap with text within the boxes
 p <- ggplot(data = pbcor_mat, aes(Var2, Var1, fill = value))+
   geom_tile(color = "white")+
   scale_fill_gradient2(low = "blue", high = "red", mid = "white",

@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "get_per_gene_info_v2"
 output: html_document
 ---
@@ -17,14 +38,11 @@ library(data.table)
 ```{r}
 
 
-## read in files
+## read in gene file
 read_locations = function(genome) {
   # list of elements to judge the distance of, in this case genes
   
   locations_file = paste("all_gffs_fixed/",genome,"_fungap_out.fixed.gff3", sep='')
-  
-  # list of elements to judge the distance to, in this case genes again
-  
   
   # read in file
   # just genes and their location and orientation
@@ -43,7 +61,7 @@ read_locations = function(genome) {
   return(locations)
 }
 
-## read in comparison tes
+## read in te locations for comparison
 read_comparison_te = function(genome) {
   comparison_file = paste("te_annotations/", genome,".w_class.gff", sep='')
     
@@ -56,7 +74,7 @@ read_comparison_te = function(genome) {
   return(comparison)
 }
 
-## read in comparison genes
+## read in gene locations for comparison
 read_comparison_gene = function(genome) {
   comparison_file = paste("all_gffs_fixed/",genome,"_fungap_out.fixed.gff3", sep='')
     
@@ -86,7 +104,7 @@ add_ogs = function(genome_full_name, locations) {
   
   colnames(orthogroup_info) <- c('protein')
   
-  ## this is to deal with the separation later, need to know how big to make the data frame
+  ## this is to deal with the formating later, need to know how big to make the data frame
   max_columns <- max(sapply(orthogroup_info$protein, strsplit_sapply))
   
   column_names <- as.character(seq(from = 1, to = max_columns, by = 1))
@@ -122,7 +140,7 @@ read_chromsizes = function(genome) {
   return(chromsizes)
 }
 
-## check if there is enough space around the gene to call
+## check if there is enough space around the gene to call true/false nearby
 enough_space = function(x, distance) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -135,7 +153,7 @@ enough_space = function(x, distance) {
   }
 }
 
-## check if a te is nearby or not
+# call if a te is nearby true/false
 nearby_te_per_class = function(x, class, distance) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -154,6 +172,7 @@ nearby_te_per_class = function(x, class, distance) {
   }
 }
 
+# call if a gene is nearby true/false
 nearby_gene = function(x, class, distance) {
   scaffold = x['scaffold']
   start = as.numeric(x['start'])
@@ -378,7 +397,7 @@ classes <- c(
   'Unknown'
 )
 
-
+# pre-set up df to fill it with gene info later
 df_gene_info <- data.frame(matrix(ncol = 32, nrow = 0))
 
 colnames(df_gene_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
@@ -416,6 +435,8 @@ for (lineage in c(2,3,4)) {
   conserved_ogs <- read.table(conserved_file, header=FALSE, sep='\t')
   
   conserved_ogs <- conserved_ogs$V1
+
+  # read in pav ogs for lineage
   
   pav_file <- paste('../pipeline_methods/actual_pav_ogs_', lineage,'.txt', sep ='')
   
@@ -423,6 +444,7 @@ for (lineage in c(2,3,4)) {
   
   pav_ogs <- pav_ogs$V1
   
+  # pav og proportion to add to df
   df_og_pav_scores <- data.frame(fread(paste('../pipeline_methods/pav_scores_per_og_proportional', lineage, '.txt', sep=''), na.strings = ''))
 
   colnames(df_og_pav_scores) <- c("orthogroups", "proportion")
@@ -435,6 +457,7 @@ for (lineage in c(2,3,4)) {
     
     print(genome)
     
+    # read in files for comparisons
     locations <- read_locations(genome)
     comparison_tes <- read_comparison_te(genome)
     comparison_genes <- read_comparison_gene(genome)
@@ -447,6 +470,7 @@ for (lineage in c(2,3,4)) {
     
     chromsizes <- read_chromsizes(genome)
     
+    # set minimum distance to call whether a te/gene gene is nearby
     distance_te = 5000
     
     locations$enough_space_te = apply(locations,1,enough_space,distance=distance_te)
@@ -458,7 +482,9 @@ for (lineage in c(2,3,4)) {
     ## make sure locations is sorted by scaffold
     
     locations = locations[order(locations$scaffold),]
-    
+
+    ## loop per scaffold to speed things up
+    # call true/false whether a te is nearby by class
     for (class in classes) {
       if (class == "any_te"){
         subset_per_class = comparison_tes
@@ -485,6 +511,8 @@ for (lineage in c(2,3,4)) {
     
     gene_column = c()
     
+    ## loop per scaffold to speed things up
+    # call true/false whether a gene is nearby
     for (scaffold in unique(locations$scaffold)){
       locations_per_scaffold = locations[locations$scaffold == scaffold,]
       subset_genes_per_scaffold = comparison_genes[comparison_genes$scaffold == scaffold,]
@@ -531,6 +559,8 @@ close(output.file)
 
 ```{r}
 
+# adding a bunch more information from other sources
+
 df_gene_info <- data.frame(fread('gene_info_for_rf.txt', na.strings = ''))
 
 colnames(df_gene_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
@@ -560,7 +590,7 @@ colnames(df_gene_info) <- c("scaffold", "start", "end", "orientation", "id", "or
 ```
 
 ```{r}
-## remove the te classes...
+## remove the te classes... since we didnt end up using them for rf
 
 df_gene_info <- subset(df_gene_info, select = -c(DNA,
                               `DNA/CMC-EnSpm`,
@@ -583,6 +613,7 @@ df_gene_info <- subset(df_gene_info, select = -c(DNA,
 
 
 ```{r}
+## add gc stats
 
 df_gc_stats <- data.frame(fread('all_genomes.gc_table.txt',sep='\t'))
 
@@ -611,6 +642,7 @@ df_gene_info$lengths <- df_gene_info$end - df_gene_info$start
 ```
 
 ```{r}
+# add tm annotations and signalp
 
 df_tm <- data.frame(fread('all.tmhmm.table'), na.string='')
 
@@ -637,6 +669,7 @@ rownames(df_gene_info) <- df_gene_info$id
 ```
 
 ```{r}
+# add effectorp annotations
 
 df_effectorp <- data.frame(fread('all.effectorp.table'), na.string='')
 
@@ -655,6 +688,8 @@ df_gene_info$effectorp[is.na(df_gene_info$effectorp)] <- FALSE
 
 
 ```{r}
+
+# add ngs signals
 
 signal_files <- c('H3K27ac_per_og.txt',
     'H3K27me3_per_og.txt',
@@ -697,6 +732,7 @@ for (i in seq(length(signal_names))) {
 
 
 ```{r}
+## add go annotation
 
 df_go <- data.frame(fread('GO.all.out'), na.string='')
 
@@ -713,6 +749,8 @@ df_gene_info$go[is.na(df_gene_info$go)] <- FALSE
 ```
 
 ```{r}
+
+## add pfam annotation
 
 df_pfam <- data.frame(fread('pfam.all.out'), na.string='')
 
@@ -732,7 +770,7 @@ df_gene_info$pfam[is.na(df_gene_info$pfam)] <- FALSE
 
 ```{r}
 
-## and drop all NAs bc random forest doesnt work with them
+## and drop all genes with any NAs bc random forest doesnt work with them
 df_gene_info <- na.omit(df_gene_info)
 
 ```
@@ -748,6 +786,8 @@ close(output.file)
 ```
 
 ```{r}
+
+## drop extra info that only exists for rice blast so that i can test on wheat blast data
 
 df_gene_info_cross_host <- subset(df_gene_info, select = -c(eccdna_cov, H3K27ac, H3K27me3, H3K36me3, methylation))
 

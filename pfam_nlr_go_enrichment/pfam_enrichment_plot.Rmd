@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "pfam_enrichment_plot"
 output: html_document
 date: '2022-10-14'
@@ -15,6 +36,8 @@ library(data.table)
 
 ```{r}
 
+# read in pfam enrichment table
+
 df <- data.frame(fread('pfam_enrichment.txt'))
 
 df <- subset(df, select=-c(V1))
@@ -23,7 +46,7 @@ df <- subset(df, select=-c(V1))
 ```
 
 ```{r}
-## skip annotated just report as a written result instead
+## skip unannotated just report as a written result instead bc it would blow out the plot
 
 df <- df[df$domain != "unannotated",]
 
@@ -31,7 +54,7 @@ df <- df[df$domain != "unannotated",]
 
 ```{r}
 
-## fix some names
+## fix some names to add some detail to the annotations
 
 df$domain[df$domain == "tyrosinase"] <- "Tyrosinase (melanin production)"
 
@@ -52,18 +75,19 @@ df$domain[df$domain == "polyprenyl_synt"] <- "Polyprenyl synthetase (isoprenoid 
 ```
 
 ```{r}
+
+## plot -log10 pvalue
 df$p_value_fisher <- -log10(df$p_value_fisher)
 ```
 
 
 ```{r}
 
-
+# plot pfam enrichment
 
 p <- ggplot(df, aes(x = ratio, y = factor(domain))) +
   geom_point(aes(color=p_value_fisher, size=annotated)) + theme_classic() +
   scale_colour_gradient(low = "blue", high = "red") +
-  # geom_rect(mapping=aes(xmin=-Inf, xmax=1, ymin=-Inf, ymax=Inf), color="grey", alpha=0.01) + # rectangle shows the mark for observed/expected is 1
   xlab("Observed count over expected count") + ylab('')+ labs(color = "-Log10 p-value", size = "Number of orthogroups \nwith annotation")+theme(axis.text=element_text(size=6), axis.title=element_text(size=8), legend.title=element_text(size=8))+
   guides(colour = guide_colorbar(order = 1),
               size = guide_legend(order = 2))

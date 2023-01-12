@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "pav_counts_cross_host"
 output: html_document
 date: '2022-11-11'
@@ -21,6 +42,7 @@ working_dirs <- c(
   'pav_newest_wheat_blast_all'
 )
 
+# names of lineages of interest
 lineages_list <- list(
   c(2,3),
   c(1,2)
@@ -47,15 +69,18 @@ for (i in seq(from=1,to=2)){
   for (k in seq(from=1,to=2)){
     
     lineage <- lineages[k]
-
+    
+    ## get conserved and pav orthogroups
     conserved_file <- paste('../../', working_dir, '/pipeline_methods/conserved_ogs_', lineage, '.txt', sep = '')
     
     conserved_ogs <- read.table(conserved_file, header=FALSE, sep='\t')
     
     conserved_ogs <- conserved_ogs$V1
     
+    # count
     conserved_ogs_count <- length(conserved_ogs)
     
+    # same for pav ogs
     pav_file <- paste('../../', working_dir, '/pipeline_methods/actual_pav_ogs_', lineage, '.txt', sep = '')
     
     pav_ogs <- read.table(pav_file, header=FALSE, sep='\t')
@@ -64,6 +89,7 @@ for (i in seq(from=1,to=2)){
     
     pav_ogs_count <- length(pav_ogs)
     
+    # and all ogs to get the "other" category
     all_file <- paste('../../', working_dir, '/pipeline_methods/all_ogs_', lineage, '.txt', sep = '')
     
     all_ogs <- read.table(all_file, header=FALSE, sep='\t')
@@ -94,7 +120,7 @@ for (i in seq(from=1,to=2)){
   }
 }
 
-
+# putting it all together
 df <- data.frame(count,percentage,label, lineage_column,host_column)
 
 df$lineage_column <- as.character(df$lineage_column)
@@ -102,6 +128,8 @@ df$lineage_column <- as.character(df$lineage_column)
 ```
 
 ```{r}
+
+## complicated math to properly position the labels
 
 label_df <- data.frame(df$percentage, df$count,df$label,df$lineage_column, df$host_column)
 
@@ -125,6 +153,7 @@ label_df <- label_df[label_df$label != "Other OGs",]
 
 ```{r}
 
+## plot stacked barplot with text representing the counts per category
 p <- ggplot(df, aes(x = lineage_column, fill = label, y = percentage)) +
   geom_bar(stat = 'identity', position = 'fill')+
     geom_text(data=label_df, aes(y=position,x=lineage_column,label=count), size=6*0.36)+

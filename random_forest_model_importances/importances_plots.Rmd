@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "importances_plot"
 output: html_document
 date: '2022-10-24'
@@ -14,46 +35,16 @@ library(data.table)
 ```{r}
 
 files <- c(
-  'full_model_rice_default_importances.txt',
-  'full_model_rice_dropcol_importances.txt',
-  'full_model_rice_permutation_importances.txt',
   'rf_importances_replicated.gene_info.full_model.rice_blast.txt',
-  'cross_host_rice_only_default_importances.txt',
-  'cross_host_rice_only_dropcol_importances.txt',
-  'cross_host_rice_only_permutation_importances.txt',
   'rf_importances_replicated.gene_info.cross_host.rice_blast.txt',
-  'cross_host_wheat_only_default_importances.txt',
-  'cross_host_wheat_only_dropcol_importances.txt',
-  'cross_host_wheat_only_permutation_importances.txt',
   'rf_importances_replicated.gene_info.cross_host.wheat_blast.txt'
 )
 
 outputs <- c(
-  'full_model_rice_default_importances_barplot.pdf',
-  'full_model_rice_dropcol_importances_barplot.pdf',
-  'full_model_rice_permutation_importances_barplot.pdf',
   'full_model_rice_f1_perm_importances_barplot.pdf',
-  'cross_host_rice_only_default_importances_barplot.pdf',
-  'cross_host_rice_only_dropcol_importances_barplot.pdf',
-  'cross_host_rice_only_permutation_importances_barplot.pdf',
   'cross_host_rice_only_f1_perm_importances_barplot.pdf',
-  'cross_host_wheat_only_default_importances_barplot.pdf',
-  'cross_host_wheat_only_dropcol_importances_barplot.pdf',
-  'cross_host_wheat_only_permutation_importances_barplot.pdf',
   'cross_host_wheat_only_f1_perm_importances_barplot.pdf'
 )
-
-# titles <- c(
-#   'Full Model Trained on Subset Rice Blast Data',
-#   'Full Model Trained on Subset Rice Blast Data',
-#   'Full Model Trained on Subset Rice Blast Data',
-#   'Reduced Model Trained on Subset Rice Blast Data',
-#   'Reduced Model Trained on Subset Rice Blast Data',
-#   'Reduced Model Trained on Subset Rice Blast Data',
-#   'Reduced Model Trained on Subset Wheat Blast Data',
-#   'Reduced Model Trained on Subset Wheat Blast Data',
-#   'Reduced Model Trained on Subset Wheat Blast Data'
-# )
 
 ```
 
@@ -66,10 +57,12 @@ gg_color_hue <- function(n) {
 
 ```{r}
 
-file = files[4]
+## make sure to keep color hues consistent between plots
+file = files[1]
 
 df <- data.frame(fread(file))
 
+# fix variable names
 df$Feature[df$Feature == 'H3K27me3'] <- 'H3K27me3 Signal'
 df$Feature[df$Feature == 'lengths'] <- 'Gene length'
 df$Feature[df$Feature == 'flanking_1kb_gc'] <- 'Flanking AT Content'
@@ -105,10 +98,10 @@ for (i in seq(from=1,to=length(files))){
   file = files[i]
   output = outputs[i]
   print(file)
-  # title = titles[i]
-  
+
   df <- data.frame(fread(file))
   
+  # fix variable names
   df$Feature[df$Feature == 'H3K27me3'] <- 'H3K27me3 Signal'
   df$Feature[df$Feature == 'lengths'] <- 'Gene length'
   df$Feature[df$Feature == 'flanking_1kb_gc'] <- 'Flanking AT Content'
@@ -131,12 +124,12 @@ for (i in seq(from=1,to=length(files))){
   
   df$Feature <- factor(df$Feature, levels = df$Feature)
   
+  # plot feature importance histogram
   p <- ggplot(df, aes(x=Feature, y=Importance, fill=Feature)) + 
     geom_bar(stat='identity') + theme_classic()+
     scale_fill_manual(values=colors) +
     ylab('Average decrease in F1 of model \n when feature is permuted in test data')+
     xlab('')+
-    # ggtitle(title)+
     theme(axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.position = 'none', plot.title=element_text(size=8)) +
     coord_flip()
   

@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "cross_host_deletion_distance_plots"
 output: html_document
 date: '2022-11-04'
@@ -15,6 +36,7 @@ library(ggnewscale)
 
 
 ```{r}
+## read in dfs containing information of distance to the nearest pav and conserved genes for all genes for both wheat and rice blast
 df_distance_info_wheat_blast <-data.frame(fread(
   '../../pav_newest_wheat_blast_all/deletion_statistics/gene_deletion_distance_info.txt'))
 
@@ -67,6 +89,7 @@ for (i in seq(from=1, to=length(plot_columns_list))){
   
   axis_label = axis_labels[i]
   
+  # exclude other genes
   df <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,
                          c('lineage_conserved', 'lineage_pav')]
   df[df==TRUE] <- 1
@@ -92,17 +115,20 @@ for (i in seq(from=1, to=length(plot_columns_list))){
   df$distance_up <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,][[plot_columns[1]]]
   df$distance_down <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,][[plot_columns[2]]]
   
+  # this omits any genes that dont have known upstream OR downstream values
   df <- na.omit(df)
   
   df$distance_up <- log10(df$distance_up)
     
   df$distance_down <- log10(df$distance_down)
   
-  ## HMMM SHOULD THIS BE THE WHOLE POP MEDIAN, PROBABLY NOT ##
+  ## currently this means that the median for all genes across wheat and rice blast is plotted on the 2d density plot
   
   x_int <- median(log10(df_distance_info[plot_columns[1]])[[1]], na.rm=TRUE)
   y_int <- median(log10(df_distance_info[plot_columns[2]])[[1]], na.rm=TRUE)
   
+  ## plot 2d density plot
+  ## new_scale_fill() allows different colors/plots for each category
   p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
     stat_density_2d(data = ~ subset(., gene_type_w_host=="Rice Blast (Conserved)"),aes(fill = ..level..), geom = "polygon") + # 2d density
     scale_fill_distiller(palette = "Reds", direction = 1) +
@@ -127,7 +153,7 @@ for (i in seq(from=1, to=length(plot_columns_list))){
     scale_y_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) +
     xlab(paste("5' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
     ylab(paste("3' Distance to \nnearest ", axis_label, " (kbp)", sep ='')) +
-    facet_grid(. ~ gene_type_w_host)+
+    facet_grid(. ~ gene_type_w_host)+ # makes separate plots for each category
     theme_classic()+
       theme(axis.text=element_text(size=6), axis.title=element_text(size=8), 
         legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6))+
@@ -145,6 +171,7 @@ for (i in seq(from=1, to=length(plot_columns_list))){
 ```
 
 ```{r}
+# memory management
 rm(df)
 rm(p)
 ```
@@ -165,6 +192,7 @@ axis_labels = c(
 
 ```{r}
 
+## plot just upstream or downstream violin plots
 for (i in seq(from=1, to=length(plot_columns_list))){
   
   plot_columns = unlist(plot_columns_list[i])
@@ -209,7 +237,7 @@ for (i in seq(from=1, to=length(plot_columns_list))){
                             ))
   
 
-  ## omitting NAs here doesnt get rid of genes with one upstream value but no downstream value
+  ## omitting NAs here doesnt get rid of genes with one upstream value but no downstream value and vice versa, only one of the two values is required
   df <- na.omit(df)
   
   df$distance <- log10(df$distance)
@@ -257,6 +285,8 @@ legend_labels_categorical <- c(
 ```
 
 ```{r}
+
+## this time genes dont need to have an upstream or downstream value, categorical values of whether a gene is nearby or not are used instead (this means the greatest number of genes are represented)
 
 for (i in seq(from=1,to=length(categorical_variables))){
   
@@ -306,7 +336,7 @@ for (i in seq(from=1,to=length(categorical_variables))){
   
   plot_df$og_group <- factor(plot_df$og_group,levels = c("PAV", "Conserved"))
   
-  
+  # plot barplot
   p <- ggplot(plot_df, aes(x = og_group, y = percentage)) +
     geom_bar(stat = 'identity', position = 'dodge') +
     theme_minimal() +

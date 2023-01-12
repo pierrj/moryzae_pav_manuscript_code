@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "del_params_dsns"
 output: html_document
 date: '2022-12-07'
@@ -49,13 +70,16 @@ for (i in seq(from=1,to=length(continuous_variables))){
   print(i)
   print(variable)
   print(legend_label)
-    
+  
+  ## read in values for randomly selected regions
   vector_shuffled_rice <- data.frame(fread(paste('../../pav_newest_gladieux_only_fungap/sv_callers/shuffled.',
                                             variable,'.txt', sep='')))$V1
   
+  ## read in values for deletions
   vector_del_rice <- data.frame(fread(paste('../../pav_newest_gladieux_only_fungap/sv_callers/del.',
                                           variable,'.txt', sep='')))$V1
   
+  # same for wheat blast
   vector_shuffled_wheat <- data.frame(fread(paste('../../pav_newest_wheat_blast_all/sv_callers/shuffled.',
                                             variable,'.txt', sep='')))$V1
   
@@ -71,6 +95,7 @@ for (i in seq(from=1,to=length(continuous_variables))){
               rep('Wheat Blast Deletion',length(vector_del_wheat)))
   )
   
+  # plot density hists for each variable
   p <- ggplot(data=plot_df, aes(x=value, color=group)) +
       stat_density(geom="line",position="identity",adjust=5)+
     ylab('Density')+
@@ -84,6 +109,7 @@ for (i in seq(from=1,to=length(continuous_variables))){
 
 }
 
+# get single legend for all
 p <- ggplot(data=plot_df, aes(x=value, group=group, color=group)) +
   stat_density(geom="line",position="identity")+ theme_minimal()+
   ylab('Density')+
@@ -126,6 +152,7 @@ axis_xlim_uppers <-c(
 
 ```{r}
 
+## continuous variables that are only present in rice blast
 for (i in seq(from=1,to=length(continuous_variables))){
   
   variable = continuous_variables[i]
@@ -138,9 +165,11 @@ for (i in seq(from=1,to=length(continuous_variables))){
   print(variable)
   print(legend_label)
   
+  ## read in values for shuffled regions
   vector_shuffled_rice <- data.frame(fread(paste('../../pav_newest_gladieux_only_fungap/sv_callers/shuffled.',
                                             variable,'.txt', sep='')))$V1
   
+  ## read in values for deletions
   vector_del_rice <- data.frame(fread(paste('../../pav_newest_gladieux_only_fungap/sv_callers/del.',
                                           variable,'.txt', sep='')))$V1
   
@@ -164,6 +193,7 @@ for (i in seq(from=1,to=length(continuous_variables))){
 
 }
 
+## grab single legend for all plots
 p <- ggplot(data=plot_df, aes(x=value, group=group, color=group)) +
   stat_density(geom="line",position="identity")+ theme_minimal()+
   ylab('Density')+

@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "rf_params_dsns"
 output: html_document
 date: '2022-10-24'
@@ -14,6 +35,8 @@ library(ggplot2)
 
 ```{r}
 
+## read in dfs from random forest gene info tables for wheat and rice blast
+
 df_gene_info_wheat_blast <-data.frame(fread('../../pav_newest_wheat_blast_all/random_forest/gene_info.cross_host.wheat_blast.txt', na.strings = ''))
 
 df_gene_info_wheat_blast$host = "wheat"
@@ -22,6 +45,7 @@ df_gene_info_rice_blast <- data.frame(fread('../../pav_newest_gladieux_only_fung
 
 df_gene_info_rice_blast$host = "rice"
 
+# merge together after adding host names
 df <- rbind(df_gene_info_rice_blast, df_gene_info_wheat_blast)
 
 rm(df_gene_info_wheat_blast)
@@ -57,12 +81,16 @@ legend_labels_categorical <- c(
 
 ```{r}
 
+## plots for categorical variables in rf model
+
 for (i in seq(from=1,to=length(categorical_variables))){
   
   variable = categorical_variables[i]
   
   legend_label = legend_labels_categorical[i]
   
+  # get percentages of genes with categorical variable == TRUE for pav/non-pav and conserved/non-conserved for wheat and rice blast
+  # technically "other" genes are present in both categories so they aren't exactly complimentary
   percent_pav_true_rice <- mean(
     df[[variable]][df$lineage_pav==TRUE & df$host == 'rice'], na.rm = TRUE
   )
@@ -110,6 +138,7 @@ for (i in seq(from=1,to=length(categorical_variables))){
                 "Conserved", "Conserved",
                 "PAV", "PAV",
                 "Conserved", "Conserved")
+  ## take ratio of the pav/conesrved for both
   obs_over_expected_rice <- round(percent_pav_true_rice/percent_conserved_true_rice, 1)
   obs_over_expected_wheat <- round(percent_pav_true_wheat/percent_conserved_true_wheat,1)
   
@@ -133,7 +162,7 @@ for (i in seq(from=1,to=length(categorical_variables))){
   
   plot_df$og_group <- factor(plot_df$og_group,levels = c("PAV", "Conserved"))
   
-  
+  # plot stacked barplots with ratio as title
   p <- ggplot(plot_df, aes(x = og_group, y = percentage, fill = value)) +
     geom_bar(stat = 'identity', position = 'fill') +
     theme_minimal() +
@@ -152,6 +181,7 @@ for (i in seq(from=1,to=length(categorical_variables))){
                '.pdf',sep = ''), plot = p, width = 6.5/3, height = 4.5/2)
 }
 
+## get single legend for all plots
 p <- ggplot(plot_df, aes(x = og_group, y = percentage, fill = value)) +
   geom_bar(stat = 'identity', position = 'fill') +
   theme_minimal() +
@@ -203,6 +233,7 @@ axis_xlim_uppers <-c(
 
 ```{r}
 
+# now make density histograms for continuous variables
 for (i in seq(from=1,to=length(continuous_variables))){
   
   variable = continuous_variables[i]
@@ -215,6 +246,7 @@ for (i in seq(from=1,to=length(continuous_variables))){
   print(variable)
   print(legend_label)
   
+  ## get continuous variable values for pav and conserved genes for rice and wheat
   vector_variable_pav_rice <- df[[variable]][df$lineage_pav == TRUE &
                                                df$host == "rice"]
   
@@ -227,6 +259,7 @@ for (i in seq(from=1,to=length(continuous_variables))){
   vector_variable_conserved_wheat <- df[[variable]][df$lineage_conserved == TRUE &
                                                df$host == "wheat"]
   
+  ## need to add label to all of them in order to properly plot
   plot_df <- data.frame(
     value = c(vector_variable_pav_rice, vector_variable_conserved_rice,
               vector_variable_pav_wheat, vector_variable_conserved_wheat),
@@ -236,6 +269,8 @@ for (i in seq(from=1,to=length(continuous_variables))){
               rep('Wheat Blast (Conserved)',length(vector_variable_conserved_wheat)))
   )
   
+  ## plot density histograms
+  # set different xlim for all
   p <- ggplot(data=plot_df, aes(x=value, color=group)) +
       stat_density(geom="line",position="identity",adjust=5)+
     ylab('Density')+
@@ -249,6 +284,7 @@ for (i in seq(from=1,to=length(continuous_variables))){
 
 }
 
+# get single legend for all
 p <- ggplot(data=plot_df, aes(x=value, group=group, color=group)) +
   stat_density(geom="line",position="identity")+ theme_minimal()+
   ylab('Density')+
@@ -307,6 +343,7 @@ axis_xlim_uppers_no_wheat <-c(
 
 ```{r}
 
+## same as previous continuous variable plot but without wheat blast data
 for (i in seq(from=1,to=length(continuous_variables_no_wheat))){
   
   variable = continuous_variables_no_wheat[i]
@@ -338,6 +375,7 @@ for (i in seq(from=1,to=length(continuous_variables_no_wheat))){
     ylab('Density')+
     xlab(legend_label)+
     xlim(0,axis_xlim_upper)+
+    # make sure the colors match
     scale_color_manual(values=c("#F8766D","#7CAE00"),labels=c(conserved_median,pav_median))+
     theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=6), legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
       theme(legend.position = 'none')
@@ -346,6 +384,8 @@ for (i in seq(from=1,to=length(continuous_variables_no_wheat))){
                '.pdf',sep = ''), plot = p, width = 6.5/3, height = 3.75/2)
 
 }
+
+## keep the same legend as the other plot
 
 ```
 

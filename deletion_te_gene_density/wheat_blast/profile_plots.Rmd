@@ -1,4 +1,25 @@
 ---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 title: "profile_plots"
 output: html_document
 date: '2022-10-12'
@@ -12,7 +33,7 @@ library(ggpubr)
 ```
 
 ```{r}
-# read in tab output from plot profile
+# read in tab output for plot profiler
 
 hosts <- c(
   'rice',
@@ -72,9 +93,9 @@ for (l in seq(from=1,to=length(hosts))){
     label = labels[i]
     
     df <- data.frame(matrix(ncol = 3, nrow = 0))
-  
     colnames(df) <- c("bin","val","label")
     
+    # read in bin values for each track
     for (k in seq(from = 1, to = length(regions_bed))){
       
       region_bed = regions_bed[k]
@@ -95,6 +116,7 @@ for (l in seq(from=1,to=length(hosts))){
       df <- rbind(df, df_temp)
       }
     
+    # make profile plot
     p <- ggplot(df, aes(x=bin, y=val, group=label)) + geom_line(aes(color=label), lwd=0.5) + theme_classic() +
           scale_x_continuous(labels=c('-5kbp', 'Start', 'End', '+5kbp'), breaks=c(1,500,750,1250)) + xlab('')+
           theme(axis.text=element_text(size=6), axis.title=element_text(size=6), legend.title=element_blank(), legend.text=element_text(size=8)) +                ylab(label)+
@@ -112,6 +134,7 @@ for (l in seq(from=1,to=length(hosts))){
 
 ```{r}
 
+## get legend for all plots
 p <- ggplot(df, aes(x=bin, y=val, group=label)) + geom_line(aes(color=label), lwd=0.5) + theme_classic() +
       scale_x_continuous(labels=c('-0.5kb', 'Breakpoint', '0.5kb'), breaks=c(1,51,101)) + xlab('')+
       theme(axis.text=element_text(size=6), axis.title=element_text(size=8), legend.title=element_blank(), legend.text=element_text(size=6)) +          ylab(label)+guides(color=guide_legend(ncol=6))
