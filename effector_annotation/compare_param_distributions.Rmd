@@ -30,6 +30,8 @@ date: '2022-10-24'
 library(data.table)
 library(ggpubr)
 library(ggplot2)
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
 
 ```
 
@@ -51,6 +53,9 @@ df <- rbind(df_gene_info_rice_blast, df_gene_info_wheat_blast)
 rm(df_gene_info_wheat_blast)
 
 rm(df_gene_info_rice_blast)
+
+# remove lineage 4 bc pav genes arent as well defined there
+df <- df[df$lineage != 4,]
 
 ```
 
@@ -142,17 +147,17 @@ for (i in seq(from=1,to=length(categorical_variables))){
   obs_over_expected_rice <- round(percent_pav_true_rice/percent_conserved_true_rice, 1)
   obs_over_expected_wheat <- round(percent_pav_true_wheat/percent_conserved_true_wheat,1)
   
-  host <- c(paste("Rice Blast \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
-            paste("Rice Blast \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
-            paste("Rice Blast \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
-            paste("Rice Blast \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
-            paste("Wheat Blast \n PAV/Cons. = ",
+  host <- c(paste("MoO \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
+            paste("MoO \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
+            paste("MoO \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
+            paste("MoO \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
+            paste("MoT \n PAV/Cons. = ",
                   obs_over_expected_wheat,sep=''),
-            paste("Wheat Blast \n PAV/Cons. = ",
+            paste("MoT \n PAV/Cons. = ",
                   obs_over_expected_wheat,sep=''),
-            paste("Wheat Blast \n PAV/Cons. = ",
+            paste("MoT \n PAV/Cons. = ",
                   obs_over_expected_wheat,sep=''),
-            paste("Wheat Blast \n PAV/Cons. = ",
+            paste("MoT \n PAV/Cons. = ",
                   obs_over_expected_wheat,sep=''))
   
   
@@ -175,7 +180,8 @@ for (i in seq(from=1,to=length(categorical_variables))){
     ggtitle(legend_label)+
     theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
   theme(strip.text.x = element_text(size = 6))+
-    theme(legend.position = "none")
+    theme(legend.position = "none")+
+    scale_fill_manual(values = c("blue", "red"))
   
   ggsave(paste(variable, "_", 'stacked_barplot',
                '.pdf',sep = ''), plot = p, width = 6.5/3, height = 4.5/2)
@@ -194,7 +200,8 @@ p <- ggplot(plot_df, aes(x = og_group, y = percentage, fill = value)) +
   ggtitle(legend_label)+
   theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
 theme(strip.text.x = element_text(size = 6))+
-  scale_fill_discrete(labels=c('True', 'False'))
+  scale_fill_discrete(labels=c('True', 'False'))+
+    scale_fill_manual(values = c("blue", "red"))
 
 leg <- get_legend(p)
 my_legend <- as_ggplot(leg)
@@ -213,8 +220,8 @@ continuous_variables <- c(
 )
 
 legend_labels_continuous <- c(
-  'Gene AT Content',
-  'Average Flanking AT Content (1kbp)',
+  'Gene GC Content',
+  'Average Flanking GC Content (1kbp)',
   'Gene Length',
   'Expression: Culture (TPM)',
   'Expression: In Planta (TPM)'
@@ -263,10 +270,10 @@ for (i in seq(from=1,to=length(continuous_variables))){
   plot_df <- data.frame(
     value = c(vector_variable_pav_rice, vector_variable_conserved_rice,
               vector_variable_pav_wheat, vector_variable_conserved_wheat),
-    group = c(rep('Rice Blast (PAV)',length(vector_variable_pav_rice)),
-              rep('Rice Blast (Conserved)',length(vector_variable_conserved_rice)),
-              rep('Wheat Blast (PAV)',length(vector_variable_pav_wheat)),
-              rep('Wheat Blast (Conserved)',length(vector_variable_conserved_wheat)))
+    group = c(rep('MoO (PAV)',length(vector_variable_pav_rice)),
+              rep('MoO (Conserved)',length(vector_variable_conserved_rice)),
+              rep('MoT (PAV)',length(vector_variable_pav_wheat)),
+              rep('MoT (Conserved)',length(vector_variable_conserved_wheat)))
   )
   
   ## plot density histograms
@@ -276,8 +283,10 @@ for (i in seq(from=1,to=length(continuous_variables))){
     ylab('Density')+
     xlab(legend_label)+
     xlim(0,axis_xlim_upper)+
+    theme_classic()+
     theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-      theme(legend.position = "none")
+      theme(legend.position = "none")+
+    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste(variable, "_", 'density_plot',
                '.pdf',sep = ''), plot = p, width = 6.5/3, height = 3.75/2)
@@ -289,7 +298,8 @@ p <- ggplot(data=plot_df, aes(x=value, group=group, color=group)) +
   stat_density(geom="line",position="identity")+ theme_minimal()+
   ylab('Density')+
   xlab(legend_label)+
-  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())
+  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
+    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
 
 leg <- get_legend(p)
 my_legend <- as_ggplot(leg)
@@ -300,6 +310,8 @@ ggsave('legend_density_plot.pdf', plot = leg, width = 6.5, height = 0.25)
   
 df <- data.frame(fread('../../pav_newest_gladieux_only_fungap/random_forest/gene_info.full_model.rice_blast.txt', na.strings = ''))
 
+## remove lineage 4 again
+df <- df[df$lineage != 4,]
 
 ```
 
@@ -375,10 +387,12 @@ for (i in seq(from=1,to=length(continuous_variables_no_wheat))){
     ylab('Density')+
     xlab(legend_label)+
     xlim(0,axis_xlim_upper)+
+    theme_classic()+
     # make sure the colors match
     scale_color_manual(values=c("#F8766D","#7CAE00"),labels=c(conserved_median,pav_median))+
     theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=6), legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-      theme(legend.position = 'none')
+      theme(legend.position = 'none')+
+    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste(variable, "_", 'density_plot',
                '.pdf',sep = ''), plot = p, width = 6.5/3, height = 3.75/2)

@@ -95,14 +95,14 @@ p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
   # new scale fill to get different colors for TP/FNs
   new_scale_fill() +
   stat_density_2d(data = ~ subset(., model_results=="False Negatives"),aes(fill = ..level..), geom = "polygon") + # 2d density
-  scale_fill_distiller(palette = "Oranges", direction = 1) +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
   new_scale_fill() +
   scale_x_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) + # logticks
   scale_y_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) +
   xlab(paste("5' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
   ylab(paste("3' Distance to \nnearest ", axis_label, " (kbp)", sep ='')) +
   facet_grid(. ~ model_results)+
-  ggtitle("Trained on Rice Blast, Tested on Wheat Blast")+
+  ggtitle("Trained on MoO, Tested on MoT")+
   theme_classic()+
     theme(axis.text=element_text(size=6), plot.title=element_text(size=6,hjust=0.5), axis.title=element_text(size=6), 
       legend.text=element_text(size=6),strip.text = element_text(size=6))+
@@ -174,14 +174,14 @@ p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
   # new scale fill to get different colors for TP/FPs
   new_scale_fill() +
   stat_density_2d(data = ~ subset(., model_results=="False Positives"),aes(fill = ..level..), geom = "polygon") + # 2d density
-  scale_fill_distiller(palette = "Oranges", direction = 1) +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
   new_scale_fill() +
   scale_x_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) + # logticks
   scale_y_continuous(breaks=0:5, labels=c("0.001", "0.01", "0.1", "1", "10", "100"), limits = c(1,5)) +
   xlab(paste("5' Distance to nearest ", axis_label, " (kbp)", sep ='')) +
   ylab(paste("3' Distance to \nnearest ", axis_label, " (kbp)", sep ='')) +
   facet_grid(. ~ model_results)+
-  ggtitle("Trained on Wheat Blast, Tested on Rice Blast")+
+  ggtitle("Trained on MoT, Tested on MoO")+
   theme_classic()+
     theme(axis.text=element_text(size=6), plot.title=element_text(size=6,hjust=0.5), axis.title=element_text(size=6), 
       legend.text=element_text(size=6),strip.text = element_text(size=6))+

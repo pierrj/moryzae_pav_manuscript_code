@@ -10,13 +10,17 @@ Within these directories, `.slurm`, `.sh`, and `.py` scripts were used for job s
 
 `.Rmd` files contain the scripts used for generating figures for the manuscript.
 
+All files used as inputs for `.Rmd` and `.ipynb` files are available on Zenodo under the DOI 10.5281/zenodo.7444380
+
 All directories and scripts are described below:
 
-- `at_content/` - calculate at content for rice and wheat blast genes and flanking regions
+- `at_content/` - calculate gc content for rice and wheat blast genes and flanking regions
     - `rice_blast/`
         - `gc_content_per_gene.slurm`
+        - `generate_gc_table_per_genome.py`
     - `wheat_blast/`
         - `gc_content_per_gene_wheat_blast.slurm`
+        - `generate_gc_table_per_genome.py`
 - `call_pav_orthogroups/` - define pav orthogroups using phylogeny and validated pavs for each rice and wheat blast lineage
     - `rice_blast/`
         - `pav_w_tree_climbing.Rmd`
@@ -162,4 +166,9 @@ All directories and scripts are described below:
     - `rice_blast/`
         - `repeatmasker_rice_blast.slurm` - run repeatmasker rice blast genomes
     - `wheat_blast/`
-        - `repeatmasker_wheat_blast.slurm` - run repeatmasker rice blast genomes
+        - `repeatmasker_wheat_blast.slurm` - run repeatmasker wheat blast genomes
+- `feature_statistical_comparisons` - make tables of features of pav and conserved genes for MoO and MoT and perform statistical tests
+    - `distances_stats.Rmd` - gather median distances to pav genes, tes, genes, and perform permutation tests
+    - `param_categorical_stats_table.Rmd` - gather counts for categorical features of pav/conserved genes, perform chi-squared tests
+    - `param_dsns_stats_table.Rmd` - gather various statistics for continuous features of pav/conserved genes, perform permutation tests
+    - `genomic_deletion_param_dsns_stats_table.Rmd` - gather various statistics for continuous features of genomic deletions and baseline genomic regions, perform permutation tests

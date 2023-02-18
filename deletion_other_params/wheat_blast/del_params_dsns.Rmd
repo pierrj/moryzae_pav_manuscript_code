@@ -30,6 +30,8 @@ date: '2022-12-07'
 library(data.table)
 library(ggpubr)
 library(ggplot2)
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
 
 ```
 
@@ -43,7 +45,7 @@ continuous_variables <- c(
 )
 
 legend_labels_continuous <- c(
-  'AT Content',
+  'GC Content',
   'Normalized in Culture RNAseq Signal',
   'Normalized in Planta RNAseq Signal'
 )
@@ -89,10 +91,10 @@ for (i in seq(from=1,to=length(continuous_variables))){
   plot_df <- data.frame(
     value = c(vector_shuffled_rice, vector_del_rice,
               vector_shuffled_wheat, vector_del_wheat),
-    group = c(rep('Rice Blast Baseline',length(vector_shuffled_rice)),
-              rep('Rice Blast Deletion',length(vector_del_rice)),
-              rep('Wheat Blast Baseline',length(vector_shuffled_wheat)),
-              rep('Wheat Blast Deletion',length(vector_del_wheat)))
+    group = c(rep('MoO Baseline',length(vector_shuffled_rice)),
+              rep('MoO Deletion',length(vector_del_rice)),
+              rep('MoT Baseline',length(vector_shuffled_wheat)),
+              rep('MoT Deletion',length(vector_del_wheat)))
   )
   
   # plot density hists for each variable
@@ -101,8 +103,10 @@ for (i in seq(from=1,to=length(continuous_variables))){
     ylab('Density')+
     xlab(legend_label)+
     xlim(0,axis_xlim_upper)+
+    theme_classic()+
     theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-      theme(legend.position = "none")
+      theme(legend.position = "none")+
+    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste(variable, "_", 'density_plot',
                '.pdf',sep = ''), plot = p, width = 6.5/2, height = 7.25/4)
@@ -114,7 +118,8 @@ p <- ggplot(data=plot_df, aes(x=value, group=group, color=group)) +
   stat_density(geom="line",position="identity")+ theme_minimal()+
   ylab('Density')+
   xlab(legend_label)+
-  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())
+  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
+    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
 
 leg <- get_legend(p)
 my_legend <- as_ggplot(leg)
@@ -175,8 +180,8 @@ for (i in seq(from=1,to=length(continuous_variables))){
   
   plot_df <- data.frame(
     value = c(vector_shuffled_rice, vector_del_rice),
-    group = c(rep('Rice Baseline',length(vector_shuffled_rice)),
-              rep('Rice Deletion',length(vector_del_rice)))
+    group = c(rep('MoO Baseline',length(vector_shuffled_rice)),
+              rep('MoO Deletion',length(vector_del_rice)))
   )
   
   p <- ggplot(data=plot_df, aes(x=value, color=group)) +
@@ -185,25 +190,15 @@ for (i in seq(from=1,to=length(continuous_variables))){
     xlab(legend_label)+
     xlim(0,axis_xlim_upper)+
     scale_color_manual(values=c("#F8766D","#7CAE00"))+
+    theme_classic()+
     theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-      theme(legend.position = "none")
+      theme(legend.position = "none")+
+    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste(variable, "_", 'density_plot',
                '.pdf',sep = ''), plot = p, width = 6.5/2, height = 7.25/4)
 
 }
-
-## grab single legend for all plots
-p <- ggplot(data=plot_df, aes(x=value, group=group, color=group)) +
-  stat_density(geom="line",position="identity")+ theme_minimal()+
-  ylab('Density')+
-  xlab(legend_label)+
-  scale_color_manual(values=c("#F8766D","#7CAE00"))+
-  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())
-
-leg <- get_legend(p)
-my_legend <- as_ggplot(leg)
-ggsave('legend_density_plot.pdf', plot = leg, width = 6.5, height = 0.25)
 
 ```
 

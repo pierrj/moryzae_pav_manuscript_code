@@ -29,6 +29,8 @@ date: '2022-10-12'
 library(data.table)
 library(ggplot2)
 library(ggpubr)
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
 
 ```
 
@@ -120,7 +122,9 @@ for (l in seq(from=1,to=length(hosts))){
     p <- ggplot(df, aes(x=bin, y=val, group=label)) + geom_line(aes(color=label), lwd=0.5) + theme_classic() +
           scale_x_continuous(labels=c('-5kbp', 'Start', 'End', '+5kbp'), breaks=c(1,500,750,1250)) + xlab('')+
           theme(axis.text=element_text(size=6), axis.title=element_text(size=6), legend.title=element_blank(), legend.text=element_text(size=8)) +                ylab(label)+
-          theme(legend.position="none")
+          theme(legend.position="none")+
+      scale_color_manual(values=c(cbbPalette[1], cbbPalette[2], cbbPalette[3],
+                                 cbbPalette[4], cbbPalette[5], cbbPalette[6]))
         
     ggsave(paste(host, '_', output,sep=''), plot=p, width=6.5/2, height=3/2)
     
@@ -137,7 +141,9 @@ for (l in seq(from=1,to=length(hosts))){
 ## get legend for all plots
 p <- ggplot(df, aes(x=bin, y=val, group=label)) + geom_line(aes(color=label), lwd=0.5) + theme_classic() +
       scale_x_continuous(labels=c('-0.5kb', 'Breakpoint', '0.5kb'), breaks=c(1,51,101)) + xlab('')+
-      theme(axis.text=element_text(size=6), axis.title=element_text(size=8), legend.title=element_blank(), legend.text=element_text(size=6)) +          ylab(label)+guides(color=guide_legend(ncol=6))
+      theme(axis.text=element_text(size=6), axis.title=element_text(size=8), legend.title=element_blank(), legend.text=element_text(size=6)) +          ylab(label)+guides(color=guide_legend(ncol=6))+
+      scale_color_manual(values=c(cbbPalette[1], cbbPalette[2], cbbPalette[3],
+                                 cbbPalette[4], cbbPalette[5], cbbPalette[6]))
 
 leg <- get_legend(p)
 my_legend <- as_ggplot(leg)

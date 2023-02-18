@@ -1,0 +1,221 @@
+---
+title: "distances_stats"
+output: html_document
+date: '2023-02-07'
+---
+
+```{r}
+library(data.table)
+
+```
+
+
+```{r}
+## read in distance to nearest gene and te info
+df_distance_info_wheat_blast <-data.frame(fread(
+  '../../pav_newest_wheat_blast_all/distance/gene_distance_info.txt'))
+
+df_distance_info_wheat_blast$host = "wheat"
+  
+df_distance_info_rice_blast <- data.frame(fread(
+  '../../pav_newest_gladieux_only_fungap/distance/gene_distance_info.txt'))
+
+df_distance_info_rice_blast$host = "rice"
+
+df_distance_info <- rbind(df_distance_info_rice_blast, df_distance_info_wheat_blast)
+
+rm(df_distance_info_wheat_blast)
+
+rm(df_distance_info_rice_blast)
+
+
+colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
+                            "gene_distance_upstream", "gene_distance_downstream", "gene_distance_closest",
+                            "any_te_distance_upstream", "any_te_distance_downstream", "any_te_distance_closest",
+                            "enough_space_te", "enough_space_gene",
+                            "any_te", "gene_nearby",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage", "host"
+                            )
+
+## need to remove "other" genes here for chisquare test later
+
+df_distance_info <- df_distance_info[df_distance_info$lineage_conserved==TRUE | df_distance_info$lineage_pav==TRUE,]
+
+df_gene_te_distance_info <- df_distance_info
+
+## remove lineage 4 since pavs arent as well defined there
+
+df_gene_te_distance_info <- df_gene_te_distance_info[df_gene_te_distance_info$lineage != 4,]
+
+rm(df_distance_info)
+
+
+## read in dfs containing information of distance to the nearest pav and conserved genes for all genes for both wheat and rice blast
+df_distance_info_wheat_blast <-data.frame(fread(
+  '../../pav_newest_wheat_blast_all/deletion_statistics/gene_deletion_distance_info.txt'))
+
+df_distance_info_wheat_blast$host = "wheat"
+  
+df_distance_info_rice_blast <- data.frame(fread(
+  '../../pav_newest_gladieux_only_fungap/deletion_statistics/gene_deletion_distance_info.txt'))
+
+df_distance_info_rice_blast$host = "rice"
+
+df_distance_info <- rbind(df_distance_info_rice_blast, df_distance_info_wheat_blast)
+
+rm(df_distance_info_wheat_blast)
+
+rm(df_distance_info_rice_blast)
+
+
+colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage",
+                            'pav_gene_distance_upstream', 'pav_gene_distance_downstream', 'pav_gene_distance_closest',
+                            'conserved_gene_distance_upstream', 'conserved_gene_distance_downstream', 'conserved_gene_distance_closest',
+                            'enough_space_pav', 'enough_space_conserved',
+                            'pav_nearby', 'conserved_nearby', 'host'
+                            )
+
+## need to remove "other" genes here for chisquare test later
+
+df_distance_info <- df_distance_info[df_distance_info$lineage_conserved==TRUE | df_distance_info$lineage_pav==TRUE,]
+
+df_pav_distance_info <- df_distance_info
+
+## remove lineage 4 since pavs arent as well defined there
+
+df_pav_distance_info <- df_pav_distance_info[df_pav_distance_info$lineage != 4,]
+
+rm(df_distance_info)
+
+## read in dfs from random forest gene info tables for wheat and rice blast
+
+df_gene_info_wheat_blast <-data.frame(fread('../../pav_newest_wheat_blast_all/random_forest/gene_info.cross_host.wheat_blast.txt', na.strings = ''))
+
+df_gene_info_wheat_blast$host = "wheat"
+  
+df_gene_info_rice_blast <- data.frame(fread('../../pav_newest_gladieux_only_fungap/random_forest/gene_info.cross_host.rice_blast.txt', na.strings = ''))
+
+df_gene_info_rice_blast$host = "rice"
+
+# merge together after adding host names
+df <- rbind(df_gene_info_rice_blast, df_gene_info_wheat_blast)
+
+rm(df_gene_info_wheat_blast)
+
+rm(df_gene_info_rice_blast)
+
+## need to remove "other" genes here for chisquare test later
+
+df <- df[df$lineage_conserved==TRUE | df$lineage_pav==TRUE,]
+
+## remove lineage 4 since pavs arent as well defined there
+
+df <- df[df$lineage != 4,]
+
+```
+
+```{r}
+permutation_test = function(vector1, vector2, stat, replicates){
+    observed = stat(vector1) - stat(vector2)
+    combined = c(vector1, vector2)
+
+    null_dsn <- replicate(replicates,
+                          {
+                            sample_one_index <- sample(length(combined), length(vector1), replace = FALSE)
+                            sample_two_index <- seq(length(combined))[!seq(length(combined))%in%sample_one_index]
+
+                            sample_one <- combined[sample_one_index]
+                            sample_two <- combined[sample_two_index]
+                            stat(sample_one) - stat(sample_two)
+                          })
+
+    ## this is the two tailed p-value
+    p_value <- mean(abs(observed)<=abs(null_dsn))
+
+    if (p_value == 0){
+      return(paste("<", as.character(1/replicates), sep=''))
+    } else {
+      return(as.character(p_value))
+    }
+}
+```
+
+
+```{r}
+
+columns_list = c(
+  c("pav_gene_distance_upstream", "pav_gene_distance_downstream"),
+  c("gene_distance_upstream", "gene_distance_downstream"),
+  c("any_te_distance_upstream", "any_te_distance_downstream")
+)
+
+replicates <- 1000
+
+```
+
+
+```{r}
+
+col_names <- c(
+  'host',
+  'element',
+  'orientation',
+  'pav_median',
+  'conserved_median',
+  'pvalue'
+)
+
+df_stats <- data.frame(matrix(ncol = length(col_names), nrow = 0))
+
+colnames(df_stats) <- col_names
+
+
+for (host in c("rice", "wheat")){
+  
+  for (column in columns_list) {
+    
+    print(column)
+    
+    if (grepl('upstream', column, fixed=TRUE)){
+      orientation <- 'upstream'
+    } else {
+      orientation <- 'downstream'
+    }
+    
+    if (grepl('pav', column, fixed=TRUE)){
+      df_subset <- df_pav_distance_info[df_pav_distance_info$host == host,]
+      element <- 'PAV Gene'
+    } else if (grepl('te', column, fixed=TRUE)){
+      df_subset <- df_gene_te_distance_info[df_gene_te_distance_info$host == host,]
+      element <- 'TE'
+    } else {
+      df_subset <- df_gene_te_distance_info[df_gene_te_distance_info$host == host,]
+      element <- 'Gene'
+    }
+    
+    test_1 = df_subset[[column]][df_subset$lineage_pav == TRUE]
+    test_2 = df_subset[[column]][df_subset$lineage_conserved == TRUE]
+    
+    ## need to deal with missing values here
+    test_1 = na.omit(test_1)
+    test_2 = na.omit(test_2)
+    
+    pvalue <- permutation_test(test_1, test_2, median, replicates)
+    
+    output <- c(host, element, orientation, 
+                median(test_1), 
+                median(test_2), 
+                pvalue)
+    
+    df_stats[nrow(df_stats)+1,] <- output
+  }
+}
+
+write.csv(df_stats, 'distances_stats.csv', row.names=FALSE)
+
+```
+
+

@@ -31,6 +31,7 @@ library(ggplot2)
 library(tidyr)
 library(data.table)
 library(ggnewscale)
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 ```
 
@@ -62,6 +63,9 @@ colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id",
                             "lineage_conserved", "lineage_pav",
                             "genome", "lineage", "host"
                             )
+
+## remove lineage 4 as pav genes are not as well defined there
+df_distance_info <- df_distance_info[df_distance_info$lineage != 4,]
 
 ```
 
@@ -106,10 +110,10 @@ for (i in seq(from=1, to=length(plot_columns_list))){
   
   df$gene_type_w_host <- paste(df$gene_type, df$host)
   
-  df[df=="Conserved rice"] <- "Rice Blast (Conserved)"
-  df[df=="PAV rice"] <- "Rice Blast (PAV)"
-  df[df=="Conserved wheat"] <- "Wheat Blast (Conserved)"
-  df[df=="PAV wheat"] <- "Wheat Blast (PAV)"
+  df[df=="Conserved rice"] <- "MoO (Conserved)"
+  df[df=="PAV rice"] <- "MoO (PAV)"
+  df[df=="Conserved wheat"] <- "MoT (Conserved)"
+  df[df=="PAV wheat"] <- "MoT (PAV)"
   
   df <- subset(df, select=-c(lineage_pav, lineage_conserved, gene_type, host))
   
@@ -130,18 +134,18 @@ for (i in seq(from=1, to=length(plot_columns_list))){
   
   ## plot 2d density plot
   p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
-    stat_density_2d(data = ~ subset(., gene_type_w_host=="Rice Blast (Conserved)"),aes(fill = ..level..), geom = "polygon") + # 2d density
-    scale_fill_distiller(palette = "Reds", direction = 1) +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoO (Conserved)"),aes(fill = ..level..), geom = "polygon") + # 2d density
+    scale_fill_distiller(palette = "Greens", direction = 1) +
     ## new scale fill to have different colors per gene category
     new_scale_fill() +
-    stat_density_2d(data = ~ subset(., gene_type_w_host=="Rice Blast (PAV)"),aes(fill = ..level..), geom = "polygon") + # 2d density
-    scale_fill_distiller(palette = "Greens", direction = 1) +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoO (PAV)"),aes(fill = ..level..), geom = "polygon") + # 2d density
+    scale_fill_distiller(palette = "Greys", direction = 1) +
     new_scale_fill() +
-    stat_density_2d(data = ~ subset(., gene_type_w_host=="Wheat Blast (Conserved)"),aes(fill = ..level..), geom = "polygon") + # 2d density
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoT (Conserved)"),aes(fill = ..level..), geom = "polygon") + # 2d density
+    scale_fill_distiller(palette = "Oranges", direction = 1) +
+    new_scale_fill() +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoT (PAV)"),aes(fill = ..level..), geom = "polygon") + # 2d density
     scale_fill_distiller(palette = "Blues", direction = 1) +
-    new_scale_fill() +
-    stat_density_2d(data = ~ subset(., gene_type_w_host=="Wheat Blast (PAV)"),aes(fill = ..level..), geom = "polygon") + # 2d density
-    scale_fill_distiller(palette = "Purples", direction = 1) +
     geom_segment(aes(x=x_int,
                      xend=x_int,
                      y=-Inf,
@@ -214,10 +218,10 @@ for (i in seq(from=1, to=length(plot_columns_list))){
   
   df$gene_type_w_host <- paste(df$gene_type, df$host)
   
-  df[df=="Conserved rice"] <- "Rice Blast (Conserved)"
-  df[df=="PAV rice"] <- "Rice Blast (PAV)"
-  df[df=="Conserved wheat"] <- "Wheat Blast (Conserved)"
-  df[df=="PAV wheat"] <- "Wheat Blast (PAV)"
+  df[df=="Conserved rice"] <- "MoO (Conserved)"
+  df[df=="PAV rice"] <- "MoO (PAV)"
+  df[df=="Conserved wheat"] <- "MoT (Conserved)"
+  df[df=="PAV wheat"] <- "MoT (PAV)"
   
   df <- subset(df, select=-c(lineage_pav, lineage_conserved, gene_type, host))
   
@@ -250,7 +254,8 @@ for (i in seq(from=1, to=length(plot_columns_list))){
     xlab('')+
     ylab('')+
     theme(legend.position = "none")+
-    theme( strip.background = element_blank())
+    theme( strip.background = element_blank())+
+    scale_fill_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste("facetgrid_",
                strsplit(plot_columns[1], '_')[[1]][1],
@@ -322,11 +327,11 @@ for (i in seq(from=1,to=length(categorical_variables))){
   obs_over_expected_rice <- round(percent_pav_true_rice/percent_conserved_true_rice, 1)
   obs_over_expected_wheat <- round(percent_pav_true_wheat/percent_conserved_true_wheat,1)
   
-  host <- c(paste("Rice Blast \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
-            paste("Rice Blast \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
-            paste("Wheat Blast \n PAV/Cons. = ",
+  host <- c(paste("MoO \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
+            paste("MoO \n PAV/Cons. = ", obs_over_expected_rice,sep=''),
+            paste("MoT \n PAV/Cons. = ",
                   obs_over_expected_wheat,sep=''),
-            paste("Wheat Blast \n PAV/Cons. = ",
+            paste("MoT \n PAV/Cons. = ",
                   obs_over_expected_wheat,sep=''))
   
   
@@ -334,17 +339,21 @@ for (i in seq(from=1,to=length(categorical_variables))){
   
   plot_df$og_group <- factor(plot_df$og_group,levels = c("PAV", "Conserved"))
   
+  plot_df$color <- paste(plot_df$host, plot_df$og_group)
+    
   # plot barplot
-  p <- ggplot(plot_df, aes(x = og_group, y = percentage)) +
+  p <- ggplot(plot_df, aes(x = og_group, y = percentage, fill = color)) +
     geom_bar(stat = 'identity', position = 'dodge') +
-    theme_minimal() +
+    theme_classic() +
     xlab("") + ylab("Percentage") +
     scale_y_continuous(limits=c(0,100)) +
     facet_grid(. ~ host)+
     ggtitle(legend_label)+
     theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
   theme(strip.text.x = element_text(size = 6))+
-    theme(legend.position='none')
+    theme(legend.position='none')+
+    theme( strip.background = element_blank() )+
+    scale_fill_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste(variable, "_", 'stacked_barplot',
                '.pdf',sep = ''), plot = p, width = 6.5/3, height = (6.5/4)+0.5)

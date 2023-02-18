@@ -33,14 +33,16 @@ WHEAT_BLAST_ANALYSIS_DIR=pav_project_local/pav_newest_wheat_blast_all
 RICE_BLAST_ANALYSIS_DIR=pav_project_local/pav_newest_gladieux_only_fungap
 CROSS_HOST_ANALYSIS_DIR=pav_project_local/cross_host_comparisons
 
-## at_content
+## gc_content
 TARGET_DIR=at_content/rice_blast/
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp ${SLURM_SCRIPTS}/gc_content_per_gene.slurm $TARGET_DIR
+cp ${PYTHON_SCRIPTS}/generate_gc_table_per_genome.py $TARGET_DIR
 
 TARGET_DIR=at_content/wheat_blast/
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp ${SLURM_SCRIPTS}/gc_content_per_gene_wheat_blast.slurm $TARGET_DIR
+cp ${PYTHON_SCRIPTS}/generate_gc_table_per_genome.py $TARGET_DIR
 
 ## call_pav_orthogroups
 TARGET_DIR=call_pav_orthogroups/rice_blast/
@@ -182,7 +184,7 @@ cp $WHEAT_BLAST_ANALYSIS_DIR/pipeline_methods/plot_phylogeny.Rmd $TARGET_DIR
 ## random forest model importances
 TARGET_DIR=random_forest_model_importances
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
-cp $BASH_SCRIPTS/launch_rf_importances_parallel.sh $TARGET_DIR
+cp $SLURM_SCRIPTS/launch_rf_importances_parallel.slurm $TARGET_DIR
 cp $PYTHON_SCRIPTS/rf_importances_parallel.py $TARGET_DIR
 cp $PYTHON_SCRIPTS/average_importances_results.py $TARGET_DIR
 cp $CROSS_HOST_ANALYSIS_DIR/importances/importances_plots.Rmd $TARGET_DIR
@@ -190,7 +192,7 @@ cp $CROSS_HOST_ANALYSIS_DIR/importances/importances_plots.Rmd $TARGET_DIR
 ## random_forest_models
 TARGET_DIR=random_forest_models
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
-cp $BASH_SCRIPTS/launch_rf_parallel_single_host.sh $TARGET_DIR
+cp $SLURM_SCRIPTS/launch_rf_parallel_single_host.slurm $TARGET_DIR
 cp $PYTHON_SCRIPTS/rf_perf_test_parallel.py $TARGET_DIR
 cp $PYTHON_SCRIPTS/average_rf_results.py $TARGET_DIR
 cp $CROSS_HOST_ANALYSIS_DIR/confusion_matrices/confusion_matrix.Rmd $TARGET_DIR
@@ -206,7 +208,7 @@ cp $WHEAT_BLAST_ANALYSIS_DIR/random_forest/get_per_gene_info.Rmd $TARGET_DIR
 ## random forest cross host
 TARGET_DIR=random_forest_models_cross_host_test
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
-cp $BASH_SCRIPTS/launch_rf_parallel_cross_host.sh $TARGET_DIR
+cp $SLURM_SCRIPTS/launch_rf_parallel_cross_host.slurm $TARGET_DIR
 cp $PYTHON_SCRIPTS/rf_perf_test_cross_host.py $TARGET_DIR
 cp $PYTHON_SCRIPTS/average_rf_results.py $TARGET_DIR
 cp $CROSS_HOST_ANALYSIS_DIR/confusion_matrices/confusion_matrix.Rmd $TARGET_DIR
@@ -289,3 +291,11 @@ cp $SLURM_SCRIPTS/repeatmasker_rice_blast.slurm $TARGET_DIR
 TARGET_DIR=te_annotation/wheat_blast
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp $SLURM_SCRIPTS/repeatmasker_wheat_blast.slurm $TARGET_DIR
+
+## gather stats
+TARGET_DIR=feature_statistical_comparisons
+if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
+cp $CROSS_HOST_ANALYSIS_DIR/distances_param_stats/distances_stats.Rmd $TARGET_DIR
+cp $CROSS_HOST_ANALYSIS_DIR/distances_param_stats/param_categorical_stats_table.Rmd $TARGET_DIR
+cp $CROSS_HOST_ANALYSIS_DIR/distances_param_stats/param_dsns_stats_table.Rmd $TARGET_DIR
+cp $CROSS_HOST_ANALYSIS_DIR/distances_param_stats/genomic_deletion_param_dsns_stats_table.Rmd $TARGET_DIR

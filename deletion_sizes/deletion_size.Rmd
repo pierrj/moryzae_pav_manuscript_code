@@ -39,7 +39,7 @@ colnames(df_rice) <- c('scaffold', 'start', 'end')
 
 df_rice$length <- df_rice$end - df_rice$start
 
-df_rice$host <- "Rice Blast"
+df_rice$host <- "MoO"
 
 df_wheat <- data.frame(fread('../../pav_newest_wheat_blast_all/sv_callers/all_DEL.bed'))
 
@@ -48,7 +48,7 @@ colnames(df_wheat) <- c('scaffold', 'start', 'end')
 # get deletion lengths
 df_wheat$length <- df_wheat$end - df_wheat$start
 
-df_wheat$host <- "Wheat Blast" 
+df_wheat$host <- "MoT" 
 
 # combine dfs
 
@@ -81,8 +81,8 @@ p <- ggplot(data=plot_df, aes(x=length, color=host)) +
   ylab('Density')+
   xlab('Deletion Lengths (kbp)')+
   xlim(0,20) +
-  theme_minimal()+
-  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'right', legend.text=element_text(size=6)) + theme(legend.title = element_blank())
+  theme_classic()+
+  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'right', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+scale_color_manual(values=c("red", "blue"))
 
 ggsave('deletion_lengths_density_plot.pdf', plot = p, width = 6.5/2, height = 4.5/2)
 

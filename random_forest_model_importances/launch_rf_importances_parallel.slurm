@@ -1,3 +1,13 @@
+#!/bin/bash
+#SBATCH --job-name=launch_rf_importances_parallel
+#SBATCH --partition=savio3_htc
+#SBATCH --qos=savio_normal
+#SBATCH --ntasks=1
+#SBATCH --time=72:00:00
+#SBATCH --mail-user=pierrj@berkeley.edu
+#SBATCH --mail-type=ALL
+#SBATCH --output=/global/home/users/pierrj/slurm_stdout/slurm-%j.out
+#SBATCH --error=/global/home/users/pierrj/slurm_stderr/slurm-%j.out
 #MIT License
 #
 #Copyright (c) 2023 Pierre Michel Joubert
@@ -20,7 +30,7 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-
+jobqueue_file=jobqueue_importances
 
 ## FULL MODEL
 cd /global/scratch/users/pierrj/PAV_SV/PAV/re_gladieux_proteomes_fungap/random_forest
@@ -42,27 +52,38 @@ if [ -f $OUTPUT_FILE ]; then
     rm $OUTPUT_FILE
 fi
 
-if [ -f jobqueue ]; then
-    rm jobqueue
+if [ -f $jobqueue_file ]; then
+    rm $jobqueue_file
 fi
 
 REPLICATES=100
 
 ## gnu parallelization stuff
 for i in $(seq $REPLICATES); do
-    echo "/global/scratch/users/pierrj/conda_envs/random_forest/bin/python /global/home/users/pierrj/git/python/rf_importances_parallel.py $INPUT_DF $MAJORITY_FRACTION $APPROACH $ESTIMATORS $SPLIT $LEAF $FEATURES $DEPTH $BOOTSTRAP" >> jobqueue
+    echo "/global/scratch/users/pierrj/conda_envs/random_forest/bin/python /global/home/users/pierrj/git/python/rf_importances_parallel.py $INPUT_DF $MAJORITY_FRACTION $APPROACH $ESTIMATORS $SPLIT $LEAF $FEATURES $DEPTH $BOOTSTRAP" >> $jobqueue_file
 done
 
 N_NODES=3
 
-split --number=l/${N_NODES} --numeric-suffixes=1 jobqueue jobqueue_
+split --number=l/${N_NODES} --numeric-suffixes=1 $jobqueue_file ${jobqueue_file}_
+
+if [ -f slurm_ids ]; then
+    rm slurm_ids
+fi
 
 for node in $(seq -f "%02g" 1 ${N_NODES})
 do
-    sbatch --job-name=$node.rf --export=ALL,OUTPUT_FILE=$OUTPUT_FILE,node=$node \
+    sbatch --parsable --job-name=$node.rf --export=ALL,OUTPUT_FILE=$OUTPUT_FILE,node=$node,jobqueue_file=$jobqueue_file \
     --account=co_minium \
-    /global/home/users/pierrj/git/slurm/htc4_gnu_parallel_rf.slurm
+    /global/home/users/pierrj/git/slurm/htc4_gnu_parallel_rf.slurm >> slurm_ids
 done
+
+if [ -f slurm_ids ]; then
+    # wait for all jobs to finish
+    sbatch -W --dependency=afterok:$(cat slurm_ids | head -c -1 | tr '\n' ':') /global/home/users/pierrj/git/slurm/dummy_job.slurm
+
+    wait
+fi
 
 # process output file and then average
 mv $OUTPUT_FILE ${OUTPUT_FILE}.old
@@ -78,7 +99,7 @@ cat ${OUTPUT_FILE}.old.colnames ${OUTPUT_FILE}.old.nocolnames > ${OUTPUT_FILE}.o
 mv $OUTPUT_FILE ${OUTPUT_FILE}.old
 
 ## transpose and fix line ending issues for plotting in R
-awk -v OFS=';' '
+awk -v OFS='\t' '
 { 
     for (i=1; i<=NF; i++)  {
         a[NR,i] = $i
@@ -95,7 +116,7 @@ END {
     }
 }' $OUTPUT_FILE.old > $OUTPUT_FILE.transposed
 
-cat $(echo -e Feature'\t'Importance ) $OUTPUT_FILE.transposed > $OUTPUT_FILE
+cat <(echo -e Feature'\t'Importance ) $OUTPUT_FILE.transposed > $OUTPUT_FILE
 
 mv $OUTPUT_FILE $OUTPUT_FILE.old
 
@@ -123,27 +144,38 @@ if [ -f $OUTPUT_FILE ]; then
     rm $OUTPUT_FILE
 fi
 
-if [ -f jobqueue ]; then
-    rm jobqueue
+if [ -f $jobqueue_file ]; then
+    rm $jobqueue_file
 fi
 
 REPLICATES=100
 
 ## gnu parallelization stuff
 for i in $(seq $REPLICATES); do
-    echo "/global/scratch/users/pierrj/conda_envs/random_forest/bin/python /global/home/users/pierrj/git/python/rf_importances_parallel.py $INPUT_DF $MAJORITY_FRACTION $APPROACH $ESTIMATORS $SPLIT $LEAF $FEATURES $DEPTH $BOOTSTRAP" >> jobqueue
+    echo "/global/scratch/users/pierrj/conda_envs/random_forest/bin/python /global/home/users/pierrj/git/python/rf_importances_parallel.py $INPUT_DF $MAJORITY_FRACTION $APPROACH $ESTIMATORS $SPLIT $LEAF $FEATURES $DEPTH $BOOTSTRAP" >> $jobqueue_file
 done
 
 N_NODES=3
 
-split --number=l/${N_NODES} --numeric-suffixes=1 jobqueue jobqueue_
+split --number=l/${N_NODES} --numeric-suffixes=1 $jobqueue_file ${jobqueue_file}_
+
+if [ -f slurm_ids ]; then
+    rm slurm_ids
+fi
 
 for node in $(seq -f "%02g" 1 ${N_NODES})
 do
-    sbatch --job-name=$node.rf --export=ALL,OUTPUT_FILE=$OUTPUT_FILE,node=$node \
+    sbatch --parsable --job-name=$node.rf --export=ALL,OUTPUT_FILE=$OUTPUT_FILE,node=$node,jobqueue_file=$jobqueue_file \
     --account=co_minium \
-    /global/home/users/pierrj/git/slurm/htc4_gnu_parallel_rf.slurm
+    /global/home/users/pierrj/git/slurm/htc4_gnu_parallel_rf.slurm >> slurm_ids
 done
+
+if [ -f slurm_ids ]; then
+    # wait for all jobs to finish
+    sbatch -W --dependency=afterok:$(cat slurm_ids | head -c -1 | tr '\n' ':') /global/home/users/pierrj/git/slurm/dummy_job.slurm
+
+    wait
+fi
 
 # process output file and then average
 mv $OUTPUT_FILE ${OUTPUT_FILE}.old
@@ -204,27 +236,38 @@ if [ -f $OUTPUT_FILE ]; then
     rm $OUTPUT_FILE
 fi
 
-if [ -f jobqueue ]; then
-    rm jobqueue
+if [ -f $jobqueue_file ]; then
+    rm $jobqueue_file
 fi
 
 REPLICATES=100
 
 ## gnu parallelization stuff
 for i in $(seq $REPLICATES); do
-    echo "/global/scratch/users/pierrj/conda_envs/random_forest/bin/python /global/home/users/pierrj/git/python/rf_importances_parallel.py $INPUT_DF $MAJORITY_FRACTION $APPROACH $ESTIMATORS $SPLIT $LEAF $FEATURES $DEPTH $BOOTSTRAP" >> jobqueue
+    echo "/global/scratch/users/pierrj/conda_envs/random_forest/bin/python /global/home/users/pierrj/git/python/rf_importances_parallel.py $INPUT_DF $MAJORITY_FRACTION $APPROACH $ESTIMATORS $SPLIT $LEAF $FEATURES $DEPTH $BOOTSTRAP" >> $jobqueue_file
 done
 
 N_NODES=3
 
-split --number=l/${N_NODES} --numeric-suffixes=1 jobqueue jobqueue_
+split --number=l/${N_NODES} --numeric-suffixes=1 $jobqueue_file ${jobqueue_file}_
+
+if [ -f slurm_ids ]; then
+    rm slurm_ids
+fi
 
 for node in $(seq -f "%02g" 1 ${N_NODES})
 do
-    sbatch --job-name=$node.rf --export=ALL,OUTPUT_FILE=$OUTPUT_FILE,node=$node \
+    sbatch --parsable --job-name=$node.rf --export=ALL,OUTPUT_FILE=$OUTPUT_FILE,node=$node,jobqueue_file=$jobqueue_file \
     --account=co_minium \
-    /global/home/users/pierrj/git/slurm/htc4_gnu_parallel_rf.slurm
+    /global/home/users/pierrj/git/slurm/htc4_gnu_parallel_rf.slurm >> slurm_ids
 done
+
+if [ -f slurm_ids ]; then
+    # wait for all jobs to finish
+    sbatch -W --dependency=afterok:$(cat slurm_ids | head -c -1 | tr '\n' ':') /global/home/users/pierrj/git/slurm/dummy_job.slurm
+
+    wait
+fi
 
 # process output file and then average
 mv $OUTPUT_FILE ${OUTPUT_FILE}.old

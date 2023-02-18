@@ -1,0 +1,321 @@
+---
+#MIT License
+#
+#Copyright (c) 2023 Pierre Michel Joubert
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+title: "param_categorical_stats_table"
+output: html_document
+date: '2023-02-06'
+---
+
+```{r}
+library(data.table)
+```
+
+```{r}
+## read in distance to nearest gene and te info
+df_distance_info_wheat_blast <-data.frame(fread(
+  '../../pav_newest_wheat_blast_all/distance/gene_distance_info.txt'))
+
+df_distance_info_wheat_blast$host = "wheat"
+  
+df_distance_info_rice_blast <- data.frame(fread(
+  '../../pav_newest_gladieux_only_fungap/distance/gene_distance_info.txt'))
+
+df_distance_info_rice_blast$host = "rice"
+
+df_distance_info <- rbind(df_distance_info_rice_blast, df_distance_info_wheat_blast)
+
+rm(df_distance_info_wheat_blast)
+
+rm(df_distance_info_rice_blast)
+
+
+colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id", "orthogroups", 
+                            "gene_distance_upstream", "gene_distance_downstream", "gene_distance_closest",
+                            "any_te_distance_upstream", "any_te_distance_downstream", "any_te_distance_closest",
+                            "enough_space_te", "enough_space_gene",
+                            "any_te", "gene_nearby",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage", "host"
+                            )
+
+## need to remove "other" genes here for chisquare test later
+
+df_distance_info <- df_distance_info[df_distance_info$lineage_conserved==TRUE | df_distance_info$lineage_pav==TRUE,]
+
+df_gene_te_distance_info <- df_distance_info
+
+## remove lineage 4 since pavs arent as well defined there
+
+df_gene_te_distance_info <- df_gene_te_distance_info[df_gene_te_distance_info$lineage != 4,]
+
+rm(df_distance_info)
+
+
+## read in dfs containing information of distance to the nearest pav and conserved genes for all genes for both wheat and rice blast
+df_distance_info_wheat_blast <-data.frame(fread(
+  '../../pav_newest_wheat_blast_all/deletion_statistics/gene_deletion_distance_info.txt'))
+
+df_distance_info_wheat_blast$host = "wheat"
+  
+df_distance_info_rice_blast <- data.frame(fread(
+  '../../pav_newest_gladieux_only_fungap/deletion_statistics/gene_deletion_distance_info.txt'))
+
+df_distance_info_rice_blast$host = "rice"
+
+df_distance_info <- rbind(df_distance_info_rice_blast, df_distance_info_wheat_blast)
+
+rm(df_distance_info_wheat_blast)
+
+rm(df_distance_info_rice_blast)
+
+
+colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id",
+                            "lineage_conserved", "lineage_pav",
+                            "genome", "lineage",
+                            'pav_gene_distance_upstream', 'pav_gene_distance_downstream', 'pav_gene_distance_closest',
+                            'conserved_gene_distance_upstream', 'conserved_gene_distance_downstream', 'conserved_gene_distance_closest',
+                            'enough_space_pav', 'enough_space_conserved',
+                            'pav_nearby', 'conserved_nearby', 'host'
+                            )
+
+## need to remove "other" genes here for chisquare test later
+
+df_distance_info <- df_distance_info[df_distance_info$lineage_conserved==TRUE | df_distance_info$lineage_pav==TRUE,]
+
+df_pav_distance_info <- df_distance_info
+
+## remove lineage 4 since pavs arent as well defined there
+
+df_pav_distance_info <- df_pav_distance_info[df_pav_distance_info$lineage != 4,]
+
+rm(df_distance_info)
+
+## read in dfs from random forest gene info tables for wheat and rice blast
+
+df_gene_info_wheat_blast <-data.frame(fread('../../pav_newest_wheat_blast_all/random_forest/gene_info.cross_host.wheat_blast.txt', na.strings = ''))
+
+df_gene_info_wheat_blast$host = "wheat"
+  
+df_gene_info_rice_blast <- data.frame(fread('../../pav_newest_gladieux_only_fungap/random_forest/gene_info.cross_host.rice_blast.txt', na.strings = ''))
+
+df_gene_info_rice_blast$host = "rice"
+
+# merge together after adding host names
+df <- rbind(df_gene_info_rice_blast, df_gene_info_wheat_blast)
+
+rm(df_gene_info_wheat_blast)
+
+rm(df_gene_info_rice_blast)
+
+## need to remove "other" genes here for chisquare test later
+
+df <- df[df$lineage_conserved==TRUE | df$lineage_pav==TRUE,]
+
+## remove lineage 4 since pavs arent as well defined there
+
+df <- df[df$lineage != 4,]
+
+```
+
+```{r}
+categorical_variables <- c(
+  'pav_nearby',
+  'any_te',
+  'gene_nearby',
+  'tm',
+  'signalp',
+  'effectorp',
+  'go',
+  'pfam'
+)
+
+legend_labels_categorical <- c(
+  'PAV Gene Nearby',
+  'TE Nearby',
+  'Gene Nearby',
+  'TM Domain',
+  'Signal Peptide',
+  'Predicted Effector',
+  'GO Annotation',
+  'PFAM Annotation'
+)
+```
+
+```{r}
+
+col_names <- c(
+  'feature',
+  'host',
+  'pav_true_count',
+  'pav_false_count',
+  'pav_true_percent',
+  'conserved_true_count',
+  'conserved_false_count',
+  'conserved_true_percent',
+  'pav_conserved_ratio',
+  'pvalue'
+)
+
+df_stats <- data.frame(matrix(ncol = length(col_names), nrow = 0))
+
+colnames(df_stats) <- col_names
+
+for (host in c("rice", "wheat")){
+  
+  columns <- categorical_variables
+  
+  for (column in columns) {
+    
+    if (column == "pav_nearby"){
+      df_subset <- df_pav_distance_info[df_pav_distance_info$host == host,]
+    } else if (column == "any_te"){
+      df_subset <- df_gene_te_distance_info[df_gene_te_distance_info$host == host,]
+    } else if (column == "gene_nearby"){
+      df_subset <- df_gene_te_distance_info[df_gene_te_distance_info$host == host,]
+    } else {
+      df_subset <- df[df$host == host,]
+    }
+    
+    pav_true_count <- nrow(df_subset[df_subset$lineage_pav == TRUE & df_subset[[column]] == TRUE,])
+    
+    conserved_true_count <- nrow(df_subset[df_subset$lineage_conserved == TRUE & df_subset[[column]] == TRUE,])
+      
+    pav_false_count <- nrow(df_subset[df_subset$lineage_pav == TRUE & df_subset[[column]] == FALSE,])
+    
+    conserved_false_count <- nrow(df_subset[df_subset$lineage_conserved == TRUE & df_subset[[column]] == FALSE,])
+      
+    pav_true_percent <- pav_true_count/(pav_true_count+pav_false_count)*100
+      
+    conserved_true_percent <- conserved_true_count/(conserved_true_count+conserved_false_count)*100
+      
+    pav_conserved_ratio <- pav_true_percent/conserved_true_percent
+      
+    pvalue <- chisq.test(df_subset$lineage_pav, df_subset[[column]], correct=FALSE)$p.value
+    
+    if (pvalue <= 0.001) {
+      pvalue <- "<0.001"
+    } else {
+      pvalue <- as.character(pvalue)
+    }
+    
+    df_stats[nrow(df_stats)+1,] <- c(
+    column,
+    host,
+    pav_true_count,
+    pav_false_count,
+    pav_true_percent,
+    conserved_true_count,
+    conserved_false_count,
+    conserved_true_percent,
+    pav_conserved_ratio,
+    pvalue
+    )
+  }
+}
+
+df_stats$feature <- c(legend_labels_categorical, legend_labels_categorical)
+
+write.csv(df_stats, 'pav_conserved_categorical_param_stats.csv', row.names=FALSE)
+
+
+```
+
+```{r}
+## now do both labels
+
+col_names <- c(
+  'feature',
+  'label',
+  'rice_true_count',
+  'rice_false_count',
+  'rice_true_percent',
+  'wheat_true_count',
+  'wheat_false_count',
+  'wheat_true_percent',
+  'rice_wheat_ratio',
+  'pvalue'
+)
+
+df_stats <- data.frame(matrix(ncol = length(col_names), nrow = 0))
+
+colnames(df_stats) <- col_names
+
+columns <- categorical_variables
+
+for (gene_status_column in c('lineage_pav', 'lineage_conserved')) {
+  for (column in columns) {
+    
+    ## only keep pav
+    if (column == "pav_nearby"){
+      df_subset <- df_pav_distance_info[df_pav_distance_info[[gene_status_column]] == TRUE,]
+    } else if (column == "any_te"){
+      df_subset <- df_gene_te_distance_info[df_gene_te_distance_info[[gene_status_column]] == TRUE,]
+    } else if (column == "gene_nearby"){
+      df_subset <- df_gene_te_distance_info[df_gene_te_distance_info[[gene_status_column]] == TRUE,]
+    } else {
+      df_subset <- df[df$lineage_pav == TRUE,]
+    }
+    
+    rice_true_count <- nrow(df_subset[df_subset$host == "rice" & df_subset[[column]] == TRUE,])
+    
+    wheat_true_count <- nrow(df_subset[df_subset$host == "wheat" & df_subset[[column]] == TRUE,])
+      
+    rice_false_count <- nrow(df_subset[df_subset$host == "rice" & df_subset[[column]] == FALSE,])
+    
+    wheat_false_count <- nrow(df_subset[df_subset$host == "wheat" & df_subset[[column]] == FALSE,])
+      
+    rice_true_percent <- rice_true_count/(rice_true_count+rice_false_count)*100
+      
+    wheat_true_percent <- wheat_true_count/(wheat_true_count+wheat_false_count)*100
+      
+    rice_wheat_ratio <- rice_true_percent/wheat_true_percent
+      
+    pvalue <- chisq.test(df_subset$host, df_subset[[column]], correct=FALSE)$p.value
+    
+    if (pvalue <= 0.001) {
+      pvalue <- "<0.001"
+    } else {
+      pvalue <- as.character(pvalue)
+    }
+    
+    df_stats[nrow(df_stats)+1,] <- c(
+    column,
+    gene_status_column,
+    rice_true_count,
+    rice_false_count,
+    rice_true_percent,
+    wheat_true_count,
+    wheat_false_count,
+    wheat_true_percent,
+    rice_wheat_ratio,
+    pvalue
+    )
+  }
+}
+
+df_stats$feature <- c(legend_labels_categorical, legend_labels_categorical)
+
+write.csv(df_stats, paste('host_comparisons_categorical_param_stats.csv', sep=''), row.names=FALSE)
+
+
+```
+

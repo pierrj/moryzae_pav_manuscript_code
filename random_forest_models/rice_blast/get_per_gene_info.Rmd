@@ -626,8 +626,10 @@ df_gc_stats$id <- gsub("^(.+);.*", "\\1", df_gc_stats$id)
 
 ```
 
+
 ```{r}
 
+## some genes get removed here bc they dont have flanking gc content
 df_gene_info <- merge(df_gene_info, df_gc_stats, by = "id")
 
 rownames(df_gene_info) <- df_gene_info$id

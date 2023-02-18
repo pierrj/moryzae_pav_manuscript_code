@@ -46,6 +46,18 @@ outputs <- c(
   'cross_host_wheat_only_f1_perm_importances_barplot.pdf'
 )
 
+titles <- c(
+  'Full Model Trained on MoO Data',
+  'Reduced Model Trained on MoO Data',
+  'Model Trained on MoT Data'
+)
+
+margins <- c(
+  -10,
+  0,
+  0
+)
+
 ```
 
 ```{r}
@@ -65,9 +77,9 @@ df <- data.frame(fread(file))
 # fix variable names
 df$Feature[df$Feature == 'H3K27me3'] <- 'H3K27me3 Signal'
 df$Feature[df$Feature == 'lengths'] <- 'Gene length'
-df$Feature[df$Feature == 'flanking_1kb_gc'] <- 'Flanking AT Content'
+df$Feature[df$Feature == 'flanking_1kb_gc'] <- 'Flanking GC Content'
 df$Feature[df$Feature == 'pfam'] <- 'Has PFAM Annotation?'
-df$Feature[df$Feature == 'eccdna_cov'] <- 'CircleSeq Signal'
+df$Feature[df$Feature == 'eccdna_cov'] <- 'EccDNA-Seq Signal'
 df$Feature[df$Feature == 'any_te'] <- 'Has TE Nearby?'
 df$Feature[df$Feature == 'H3K36me3'] <- 'H3K36me3 Signal'
 df$Feature[df$Feature == 'methylation'] <- '% Methylated Cytosines'
@@ -77,7 +89,7 @@ df$Feature[df$Feature == 'cm_expression'] <- 'Expression in Culture'
 df$Feature[df$Feature == 'gene_nearby'] <- 'Has Gene Nearby?'
 df$Feature[df$Feature == 'tm'] <- 'Has TM Domain?'
 df$Feature[df$Feature == 'signalp'] <- 'Has Signal Peptide?'
-df$Feature[df$Feature == 'gene_gc'] <- 'Gene AT Content'
+df$Feature[df$Feature == 'gene_gc'] <- 'Gene GC Content'
 df$Feature[df$Feature == 'ip_expression'] <- 'Expression in Planta'
 df$Feature[df$Feature == 'effectorp'] <- 'Is Predicted Effector?'
 
@@ -97,6 +109,8 @@ names(colors) <- df$Feature
 for (i in seq(from=1,to=length(files))){
   file = files[i]
   output = outputs[i]
+  title = titles[i]
+  margin = margins[i]
   print(file)
 
   df <- data.frame(fread(file))
@@ -104,9 +118,9 @@ for (i in seq(from=1,to=length(files))){
   # fix variable names
   df$Feature[df$Feature == 'H3K27me3'] <- 'H3K27me3 Signal'
   df$Feature[df$Feature == 'lengths'] <- 'Gene length'
-  df$Feature[df$Feature == 'flanking_1kb_gc'] <- 'Flanking AT Content'
+  df$Feature[df$Feature == 'flanking_1kb_gc'] <- 'Flanking GC Content'
   df$Feature[df$Feature == 'pfam'] <- 'Has PFAM Annotation?'
-  df$Feature[df$Feature == 'eccdna_cov'] <- 'CircleSeq Signal'
+  df$Feature[df$Feature == 'eccdna_cov'] <- 'EccDNA-Seq Signal'
   df$Feature[df$Feature == 'any_te'] <- 'Has TE Nearby?'
   df$Feature[df$Feature == 'H3K36me3'] <- 'H3K36me3 Signal'
   df$Feature[df$Feature == 'methylation'] <- '% Methylated Cytosines'
@@ -116,7 +130,7 @@ for (i in seq(from=1,to=length(files))){
   df$Feature[df$Feature == 'gene_nearby'] <- 'Has Gene Nearby?'
   df$Feature[df$Feature == 'tm'] <- 'Has TM Domain?'
   df$Feature[df$Feature == 'signalp'] <- 'Has Signal Peptide?'
-  df$Feature[df$Feature == 'gene_gc'] <- 'Gene AT Content'
+  df$Feature[df$Feature == 'gene_gc'] <- 'Gene GC Content'
   df$Feature[df$Feature == 'ip_expression'] <- 'Expression in Planta'
   df$Feature[df$Feature == 'effectorp'] <- 'Is Predicted Effector?'
   
@@ -130,10 +144,12 @@ for (i in seq(from=1,to=length(files))){
     scale_fill_manual(values=colors) +
     ylab('Average decrease in F1 of model \n when feature is permuted in test data')+
     xlab('')+
+    ggtitle(title)+
     theme(axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.position = 'none', plot.title=element_text(size=8)) +
+    theme(plot.title = element_text(hjust = 0.5, margin = margin(b=margin)))+
     coord_flip()
   
-  ggsave(output, plot = p, width = 4, height = 2)
+  ggsave(output, plot = p, width = 6.5/2, height = 2)
   
 }
 

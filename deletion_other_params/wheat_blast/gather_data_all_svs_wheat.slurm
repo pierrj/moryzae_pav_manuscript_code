@@ -100,7 +100,7 @@ done < input_list
 ## some cleaning before starting the job just in case
 rm *coverage*
 
-parallel -j ${SLURM_NTASKS} < jobqueue
+# parallel -j ${SLURM_NTASKS} < jobqueue
 
 # GC CONTENT using bedtools nuc
 OUTPUT_NAME=gc_content
@@ -110,6 +110,6 @@ for BED_FILE in $DEL_BED $SHUFFLED_BED; do
     elif [[ "${BED_FILE}" == "${SHUFFLED_BED}" ]]; then
         LABEL=shuffled
     fi
-    ### THIS IS ACTUALLY AT CONTENT NOT GC CONTENT ###
-    bedtools nuc -fi ${GENOME_FILE} -bed $BED_FILE | awk -v OFS='\t' '{ if (NR > 1) {print $4}}' > ${LABEL}.${OUTPUT_NAME}.txt
+    ## calculate gc content manually from base counts in order to deal with Ns
+    bedtools nuc -fi ${GENOME_FILE} -bed $BED_FILE | awk -v OFS='\t' '{ if (NR > 1) {print ($7+$8)/($6+$7+$8+$9)}}' > ${LABEL}.${OUTPUT_NAME}.txt
 done
