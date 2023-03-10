@@ -1,6 +1,8 @@
 # Code for manuscript on presence-absence variation in Magnaporthe oryzae
 
-This repository contains the code for a manuscript on presence-absence variation in Magnaporthe oryzae which will be published on biorxiv shortly
+This repository contains the code for a manuscript on presence-absence variation in Magnaporthe oryzae which has been published on bioRxiv here:
+[Distinct genomic contexts predict gene presence-absence variation in 
+different pathotypes of a fungal plant pathogen](https://www.biorxiv.org/content/10.1101/2023.02.17.529015v1.full.pdf)
 
 The repository is organized such that each directory represents one type of analysis in the manuscript.
 
