@@ -511,7 +511,7 @@ colnames(df_gene_info) <- c("scaffold", "start", "end", "orientation", "id", "or
                             "genome", 'lineage'
                             )
 
-for (lineage in c(1,2)) {
+for (lineage in c(1)) {
   genome_list <- lineage_info$isolate[lineage_info$lineage == lineage]
   
   # read in conserved ogs for lineage
@@ -638,7 +638,6 @@ write.table(df_gene_info, file = output.file, quote = FALSE, col.names = FALSE, 
 close(output.file)
 
 ```
-
 
 
 ## START RE-RUN HERE ###
@@ -853,6 +852,8 @@ df_gene_info$pfam[is.na(df_gene_info$pfam)] <- FALSE
 df_gene_info <- na.omit(df_gene_info)
 
 ```
+
+
 
 ```{r}
 

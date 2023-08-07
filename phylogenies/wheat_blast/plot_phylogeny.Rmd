@@ -29,6 +29,7 @@ date: '2022-11-28'
 ```{r}
 library(phytools)
 library(ape)
+library(data.table)
 
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 ```
@@ -75,7 +76,7 @@ lineage_info[nrow(lineage_info)+1,] <- c("GCA012979135.1", 0)
 lineage_info$color <- NA
 
 lineage_info$color[lineage_info$lineage==0] = cbbPalette[5]
-lineage_info$color[lineage_info$lineage==1] = cbbPalette[6]
+lineage_info$color[lineage_info$lineage==1] = "black"
 lineage_info$color[lineage_info$lineage==2] = cbbPalette[7]
 
 lineage_info <- lineage_info[match(tree$tip.label, lineage_info$isolate),]

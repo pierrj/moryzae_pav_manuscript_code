@@ -214,8 +214,101 @@ for (host in c("rice", "wheat")){
   }
 }
 
-write.csv(df_stats, 'distances_stats.csv', row.names=FALSE)
+write.csv(df_stats, 'per_host_distances_stats.csv', row.names=FALSE)
 
 ```
 
+```{r}
+
+columns_list = c(
+  c("pav_gene_distance_upstream", "pav_gene_distance_downstream"),
+  c("gene_distance_upstream", "gene_distance_downstream"),
+  c("any_te_distance_upstream", "any_te_distance_downstream")
+)
+
+replicates <- 1000
+
+```
+
+```{r}
+
+df_pav_distance_info$label <- NA
+df_gene_te_distance_info$label <- NA
+
+df_pav_distance_info$label[df_pav_distance_info$lineage_conserved == TRUE &
+                       df_pav_distance_info$lineage_pav == FALSE] <- "conserved"
+
+df_pav_distance_info$label[df_pav_distance_info$lineage_conserved == FALSE &
+                       df_pav_distance_info$lineage_pav == TRUE] <- "pav"
+
+df_gene_te_distance_info$label[df_gene_te_distance_info$lineage_conserved == TRUE &
+                       df_gene_te_distance_info$lineage_pav == FALSE] <- "conserved"
+
+df_gene_te_distance_info$label[df_gene_te_distance_info$lineage_conserved == FALSE &
+                       df_gene_te_distance_info$lineage_pav == TRUE] <- "pav"
+
+
+```
+
+
+```{r}
+
+col_names <- c(
+  'label',
+  'element',
+  'orientation',
+  'rice_median',
+  'wheat_median',
+  'pvalue'
+)
+
+df_stats <- data.frame(matrix(ncol = length(col_names), nrow = 0))
+
+colnames(df_stats) <- col_names
+
+
+for (label in c("pav", "conserved")){
+  
+  for (column in columns_list) {
+    
+    print(column)
+    
+    if (grepl('upstream', column, fixed=TRUE)){
+      orientation <- 'upstream'
+    } else {
+      orientation <- 'downstream'
+    }
+    
+    if (grepl('pav', column, fixed=TRUE)){
+      df_subset <- df_pav_distance_info[df_pav_distance_info$label == label,]
+      element <- 'PAV Gene'
+    } else if (grepl('te', column, fixed=TRUE)){
+      df_subset <- df_gene_te_distance_info[df_gene_te_distance_info$label == label,]
+      element <- 'TE'
+    } else {
+      df_subset <- df_gene_te_distance_info[df_gene_te_distance_info$label == label,]
+      element <- 'Gene'
+    }
+    
+    test_1 = df_subset[[column]][df_subset$host == "rice"]
+    test_2 = df_subset[[column]][df_subset$host == "wheat"]
+    
+    ## need to deal with missing values here
+    test_1 = na.omit(test_1)
+    test_2 = na.omit(test_2)
+    
+    pvalue <- permutation_test(test_1, test_2, median, replicates)
+    
+    output <- c(label, element, orientation, 
+                median(test_1), 
+                median(test_2), 
+                pvalue)
+    
+    df_stats[nrow(df_stats)+1,] <- output
+  }
+}
+
+write.csv(df_stats, 'per_label_distances_stats.csv', row.names=FALSE)
+
+```
 

@@ -180,6 +180,7 @@ df[df == 2] <- 1
 
 ```
 
+
 ```{r}
 
 ## DROP NI907 ##
@@ -210,33 +211,22 @@ tree <- read.tree('Single_Copy_Orthologue_Sequences_msas_combined.trimmed.fasttr
 
 tree <- drop.tip(tree,tree$tip.label[match("NI907", tree$tip.label)])
 
+tree$tip
+
+
 ```
 
 
 
 ```{r}
 
-## pick nodes that delineate lineages 1 and 2, based off of looking at the phylogeny
+## this is wheat blast so all genomes belong to the same lineage
 
-lineage_1_node <- 91
-
-descendants <- getDescendants(tree, lineage_1_node)
-
-descendants_lineage_1 <- descendants[descendants <= ncol(df)]
-
-lineage_1_isolates <- tree$tip.label[descendants_lineage_1]
-
-lineage_2_node <- 129
-
-descendants <- getDescendants(tree, lineage_2_node)
-
-descendants_lineage_2 <- descendants[descendants <= ncol(df)]
-
-lineage_2_isolates <- tree$tip.label[descendants_lineage_2]
+lineage_1_isolates <- tree$tip.label
 
 lineage_info <- data.frame(
-  c(lineage_1_isolates, lineage_2_isolates),
-  c(rep(1, length(lineage_1_isolates)), rep(2, length(lineage_2_isolates)))
+  c(lineage_1_isolates),
+  c(rep(1, length(lineage_1_isolates)))
 )
 
 ## write lineage info file
@@ -256,7 +246,7 @@ close(output.file)
 ```{r}
 ## write PAV scores per lineage, basically just a number of absences per og
 
-lineages <- c(1,2)
+lineages <- c(1)
 
 for (lineage in lineages) {
   
@@ -284,7 +274,7 @@ for (lineage in lineages) {
 
 ```{r}
 
-lineages <- c(1,2)
+lineages <- c(1)
 
 max_lost <- 2
 min_lost <- 2
@@ -404,27 +394,9 @@ write.table(conserved_ogs_1, file = output.file, quote = FALSE, col.names = FALS
 close(output.file)
 
 
-output.file <- file('actual_pav_ogs_2.txt', "wb") ## to get unix line endings
-
-write.table(actual_pav_ogs_2, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
-
-close(output.file)
-
-output.file <- file('conserved_ogs_2.txt', "wb") ## to get unix line endings
-
-write.table(conserved_ogs_2, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
-
-close(output.file)
-
 output.file <- file('all_ogs_1.txt', "wb") ## to get unix line endings
 
 write.table(all_ogs_1, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
-
-close(output.file)
-
-output.file <- file('all_ogs_2.txt', "wb") ## to get unix line endings
-
-write.table(all_ogs_2, file = output.file, quote = FALSE, col.names = FALSE, row.names = FALSE)
 
 close(output.file)
 

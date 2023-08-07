@@ -82,6 +82,11 @@ axis_labels = c(
   "TE"
 )
 
+limits = c(
+  1.1,
+  0.6
+)
+
 ```
 
 
@@ -93,6 +98,8 @@ for (i in seq(from=1, to=length(plot_columns_list))){
   plot_columns = unlist(plot_columns_list[i])
   
   axis_label = axis_labels[i]
+  
+  limit = limits[i]
   
   ## keep only pav and conserved genes
   df <- df_distance_info[df_distance_info$lineage_pav == TRUE | df_distance_info$lineage_conserved == TRUE,
@@ -134,18 +141,18 @@ for (i in seq(from=1, to=length(plot_columns_list))){
   
   ## plot 2d density plot
   p <- ggplot(df, aes(x=distance_up, y=distance_down)) +
-    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoO (Conserved)"),aes(fill = ..level..), geom = "polygon") + # 2d density
-    scale_fill_distiller(palette = "Greens", direction = 1) +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoO (Conserved)"),aes(fill = ..level..), geom = "polygon", show.legend = FALSE) + # 2d density
+    scale_fill_distiller(palette = "Greens", direction = 1, limits = c(0, limit)) +
     ## new scale fill to have different colors per gene category
     new_scale_fill() +
-    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoO (PAV)"),aes(fill = ..level..), geom = "polygon") + # 2d density
-    scale_fill_distiller(palette = "Greys", direction = 1) +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoO (PAV)"),aes(fill = ..level..), geom = "polygon", show.legend = TRUE) + # 2d density
+    scale_fill_distiller(palette = "Greys", direction = 1, name="Density", limits = c(0, limit)) +
     new_scale_fill() +
-    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoT (Conserved)"),aes(fill = ..level..), geom = "polygon") + # 2d density
-    scale_fill_distiller(palette = "Oranges", direction = 1) +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoT (Conserved)"),aes(fill = ..level..), geom = "polygon", show.legend=FALSE) + # 2d density
+    scale_fill_distiller(palette = "Oranges", direction = 1, limits = c(0, limit)) +
     new_scale_fill() +
-    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoT (PAV)"),aes(fill = ..level..), geom = "polygon") + # 2d density
-    scale_fill_distiller(palette = "Blues", direction = 1) +
+    stat_density_2d(data = ~ subset(., gene_type_w_host=="MoT (PAV)"),aes(fill = ..level..), geom = "polygon", show.legend=FALSE) + # 2d density
+    scale_fill_distiller(palette = "Blues", direction = 1, limits = c(0, limit)) +
     geom_segment(aes(x=x_int,
                      xend=x_int,
                      y=-Inf,
@@ -163,8 +170,10 @@ for (i in seq(from=1, to=length(plot_columns_list))){
       theme(axis.text=element_text(size=6), axis.title=element_text(size=8), 
         legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6))+
     theme( strip.background = element_blank())+
-    theme(legend.position="none")
-  
+    theme(legend.position="right")+
+    theme(legend.key.size = unit(0.1, 'in'))+
+    theme(legend.margin = margin(0, 0, 0, 0))
+
   ggsave(paste("facetgrid_",
              strsplit(plot_columns[1], '_')[[1]][1],
              '_',
@@ -247,7 +256,12 @@ for (i in seq(from=1, to=length(plot_columns_list))){
   df$distance <- log10(df$distance)
     
   p <- ggplot(df, aes(x=distance, y=gene_type_w_host, fill=gene_type_w_host)) + 
-    geom_violin(lwd=0.25) + geom_boxplot(width = 0.15, outlier.shape = NA,lwd=0.25)+
+    geom_violin(lwd=0.25,scale="width",adjust=5) + 
+    geom_boxplot(width = 0.15, outlier.shape = NA,lwd=0.25, coef=0)+
+    stat_summary(fun = "mean",
+         geom = "point",
+         color = "black",
+         size=0.5)+
     theme_classic()+
     facet_grid(. ~ orientation)+
     scale_x_continuous(breaks=c(1,3,5), labels=c("0.01", "1", "100"), limits = c(0,6))+

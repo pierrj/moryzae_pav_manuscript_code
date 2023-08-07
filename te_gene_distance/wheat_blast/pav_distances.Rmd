@@ -518,7 +518,7 @@ colnames(df_distance_info) <- c("scaffold", "start", "end", "orientation", "id",
                             "genome", "lineage"
                             )
 
-for (lineage in c(1,2)) {
+for (lineage in c(1)) {
   genome_list <- lineage_info$isolate[lineage_info$lineage == lineage]
   
   # read in conserved ogs for lineage

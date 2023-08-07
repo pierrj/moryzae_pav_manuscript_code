@@ -149,6 +149,35 @@ dev.off()
 
 ```
 
+```{r}
+
+df.effectors.x <- as.data.frame(effectors_pca$x)
+
+df.effectors.x$groups <- as.factor(lineage_info$lineage)
+
+pca.centroids <- aggregate(df.effectors.x[,1:2], 
+                           list(Type = df.effectors.x$groups), mean)
+
+lineage_2_3_dist <- dist(rbind(pca.centroids[pca.centroids$Type == "2",],
+           pca.centroids[pca.centroids$Type == "3",]), method = "euclidean")
+
+lineage_3_4_dist <- dist(rbind(pca.centroids[pca.centroids$Type == "3",],
+           pca.centroids[pca.centroids$Type == "4",]), method = "euclidean")
+
+lineage_2_4_dist <- dist(rbind(pca.centroids[pca.centroids$Type == "2",],
+           pca.centroids[pca.centroids$Type == "4",]), method = "euclidean")
+
+print("distance between lineage 2 and lineage 3")
+print(lineage_2_3_dist[1])
+
+print("distance between lineage 3 and lineage 4")
+print(lineage_3_4_dist[1])
+
+print("distance between lineage 2 and lineage 4")
+print(lineage_2_4_dist[1])
+
+```
+
 
 ```{r}
 
@@ -223,6 +252,35 @@ my_legend <- as_ggplot(leg)
 ggsave('legend_pca.pdf', plot = leg, width = 6.5, height = 0.25)
 
 ```
+
+```{r}
+df.all.x <- as.data.frame(all_pca$x)
+
+df.all.x$groups <- as.factor(lineage_info$lineage)
+
+pca.centroids <- aggregate(df.all.x[,1:2], 
+                           list(Type = df.all.x$groups), mean)
+
+lineage_2_3_dist <- dist(rbind(pca.centroids[pca.centroids$Type == "2",],
+           pca.centroids[pca.centroids$Type == "3",]), method = "euclidean")
+
+lineage_3_4_dist <- dist(rbind(pca.centroids[pca.centroids$Type == "3",],
+           pca.centroids[pca.centroids$Type == "4",]), method = "euclidean")
+
+lineage_2_4_dist <- dist(rbind(pca.centroids[pca.centroids$Type == "2",],
+           pca.centroids[pca.centroids$Type == "4",]), method = "euclidean")
+
+print("distance between lineage 2 and lineage 3")
+print(lineage_2_3_dist[1])
+
+print("distance between lineage 3 and lineage 4")
+print(lineage_3_4_dist[1])
+
+print("distance between lineage 2 and lineage 4")
+print(lineage_2_4_dist[1])
+```
+
+
 
 ```{r}
 ## follow up analysis
@@ -369,7 +427,32 @@ print(length(variable_orthogroups[variable_orthogroups %in% effector_ogs])/lengt
 
 ```
 
+```{r}
 
+# fisher's exact test for enrichment of effectors in lineage_differentiating PAV
+effector_in_lineage_count <- sum(effector_ogs %in% lineage_differentiating_ogs)
+
+non_effector_in_lineage_count <- sum(!(lineage_differentiating_ogs %in%     
+                                        effector_ogs))
+
+effector_not_in_lineage_count <- sum(orthogroups %in% effector_ogs & 
+                                       !(orthogroups %in%  
+                                           lineage_differentiating_ogs))
+
+non_effector_not_in_lineage_count <- sum(!(orthogroups %in% effector_ogs) &
+                                           !(orthogroups %in% 
+                                               lineage_differentiating_ogs))
+
+# Create a 2x2 contingency table
+contingency_table <- matrix(c(effector_in_lineage_count, non_effector_in_lineage_count,
+                             effector_not_in_lineage_count, non_effector_not_in_lineage_count),
+                            nrow = 2, byrow = TRUE)
+
+fisher_result <- fisher.test(contingency_table)
+p_value <- fisher_result$p.value
+print(p_value)
+
+```
 
 ```{r}
 

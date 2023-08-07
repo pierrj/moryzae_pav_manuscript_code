@@ -66,7 +66,15 @@ for (i in seq(from=1,to=2)){
   lineages <- unlist(lineages_list[i])
   host <- hosts[i]
   
-  for (k in seq(from=1,to=2)){
+  if (host == "MoO"){
+    num_lineages = 2
+  } else {
+    num_lineages = 1
+  }
+  
+  print(num_lineages)
+  
+  for (k in seq(from=1,to=num_lineages)){
     
     lineage <- lineages[k]
     
@@ -124,6 +132,8 @@ for (i in seq(from=1,to=2)){
 df <- data.frame(count,percentage,label, lineage_column,host_column)
 
 df$lineage_column <- as.character(df$lineage_column)
+
+df$lineage_column[df$lineage_column == 1] <- "N/A"
 
 ```
 

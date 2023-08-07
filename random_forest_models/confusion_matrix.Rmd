@@ -41,9 +41,9 @@ library(ggplot2)
 datas <- list(
   c(2321.66, 178.16,  376.34,  81445.23), # rice blast full model
   c(2345.73, 198.1,   378.58,  82844.18), # rice blast subset model
-  c(10365.07,        359.77,  645.16,  78231.67), # wheat blast subset model
-  c(8764.75, 113786.25,       12086.84,        871162.16), # train on rice blast, test on wheat blast
-  c(7383.49, 19319.51,        49977.94,        813148.06) # train on wheat blast, test on rice blast
+  c(1954.63, 71.79,   106.05,  42379.48), # wheat blast subset model
+  c(1779.16, 17126.84,        7437.6,  387401.4), # train on rice blast, test on wheat blast
+  c(2420.58, 24282.42,        7106.6,  856019.4) # train on wheat blast, test on rice blast
 )
 
 titles <- c(
@@ -63,6 +63,7 @@ outputs <- c(
 )
 
 ```
+
 
 ```{r}
 
@@ -105,5 +106,69 @@ for (i in seq(from=1,to=length(outputs))){
   ggsave(output, plot = p, width = 6.5/2, height = 2)
 }
 
+```
+
+```{r}
+titles <- c(
+  "Full Model Trained and \nTested on Subset MoO Data",
+  "Reduced Model Trained and \nTested on Subset MoO Data",
+  "Model Trained and \nTested on Subset MoT Data",
+  "Reduced Model Trained on Subset \nMoO Data and Tested on MoT Data",
+  "Model Trained on Subset MoT \nData and Tested on MoO Data"
+)
+
+outputs <- c(
+  'rice_full_model_confusion_matrix_raw_counts.pdf',
+  'rice_partial_model_confusion_matrix_raw_counts.pdf',
+  'wheat_partial_model_confusion_matrix_raw_counts.pdf',
+  'rice_first_cross_host_confusion_matrix_raw_counts.pdf',
+  'wheat_first_cross_host_confusion_matrix_raw_counts.pdf'
+)
+
+```
+
+```{r}
+
+for (i in seq(from=1,to=length(outputs))){
+  data <- unlist(datas[i])
+  title <- titles[i]
+  output <- outputs[i]
+  
+  
+  TClass <- factor(c("PAV Gene", "PAV Gene", "Not PAV Gene", "Not PAV Gene"))
+  PClass <- factor(c("PAV Gene", "Not PAV Gene", "PAV Gene", "Not PAV Gene"))
+  judgement<- c("good", "bad", "bad","good")
+  
+  data <- round(data, digits=0)
+  
+  data <- as.character(data)
+  
+  data <- prettyNum(data, big.mark = ",", scientific = FALSE)
+  
+  df <- data.frame(TClass, PClass, data,judgement)
+  
+  
+  # just plotting a simple confusion matrix
+  p <- ggplot(data =  df, mapping = aes(x = TClass, y = PClass,fill=judgement)) +
+      geom_tile()+
+    geom_text(aes(label = data),size=(6*0.352777778)) +
+    ylab('Predicted Label')+
+    xlab('True Label')+
+    scale_fill_manual(values = c(good="#0277bd", bad="red"))+
+    ggtitle(title)+
+    theme_classic()+
+    theme(legend.position = "none")+
+    theme(axis.text=element_text(size=6), axis.title=element_text(size=8), 
+          legend.title=element_text(size=8),plot.title=element_text(size=8,hjust=0.75),
+          plot.title.position = "plot")
+  
+  ggsave(output, plot = p, width = 6.5/2, height = 2)
+}
+
+```
+
+```{r}
+x <- c(1000,10000)
+prettyNum(x, big.mark = ",", scientific = FALSE)
 ```
 

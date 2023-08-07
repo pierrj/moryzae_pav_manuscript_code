@@ -50,10 +50,16 @@ legend_labels_continuous <- c(
   'Normalized in Planta RNAseq Signal'
 )
 
+axis_xlim_lowers <-c(
+  0.25,
+  0,
+  0
+)
+
 axis_xlim_uppers <-c(
-  1,
-  1000,
-  1000
+  0.75,
+  300,
+  300
 )
 
 ```
@@ -66,6 +72,8 @@ for (i in seq(from=1,to=length(continuous_variables))){
   variable = continuous_variables[i]
     
   legend_label = legend_labels_continuous[i]
+  
+  axis_xlim_lower = axis_xlim_lowers[i]
   
   axis_xlim_upper = axis_xlim_uppers[i]
   
@@ -92,38 +100,37 @@ for (i in seq(from=1,to=length(continuous_variables))){
     value = c(vector_shuffled_rice, vector_del_rice,
               vector_shuffled_wheat, vector_del_wheat),
     group = c(rep('MoO Baseline',length(vector_shuffled_rice)),
-              rep('MoO Deletion',length(vector_del_rice)),
+              rep('MoO Indels',length(vector_del_rice)),
               rep('MoT Baseline',length(vector_shuffled_wheat)),
-              rep('MoT Deletion',length(vector_del_wheat)))
+              rep('MoT Indels',length(vector_del_wheat)))
   )
   
   # plot density hists for each variable
-  p <- ggplot(data=plot_df, aes(x=value, color=group)) +
-      stat_density(geom="line",position="identity",adjust=5)+
-    ylab('Density')+
+  
+  p <- ggplot(data=plot_df, aes(x=value, y=group, fill=group))+
+    geom_violin(lwd=0.25, scale="width", adjust=5) + 
+    geom_boxplot(width = 0.15, outlier.shape = NA,lwd=0.25,coef=0)+
+    stat_summary(fun = "mean",
+         geom = "point",
+         color = "black",
+         size=0.5)+
     xlab(legend_label)+
-    xlim(0,axis_xlim_upper)+
+    ylab('')+
+    xlim(axis_xlim_lower,axis_xlim_upper)+
     theme_classic()+
-    theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-      theme(legend.position = "none")+
-    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
+    theme(plot.title = element_text(size=8,hjust = 0.5), 
+          axis.text=element_text(size=6),axis.title=element_text(size=8) , 
+          legend.title=element_text(size=8), legend.position = 'bottom', 
+          legend.text=element_text(size=6)) + theme(legend.title = 
+                                                      element_blank())+
+    theme(legend.position = "none")+
+    scale_fill_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste(variable, "_", 'density_plot',
-               '.pdf',sep = ''), plot = p, width = 6.5/2, height = 7.25/4)
+               '.pdf',sep = ''), plot = p, width = 6.5/2, height = 7.5/4)
 
 }
 
-# get single legend for all
-p <- ggplot(data=plot_df, aes(x=value, group=group, color=group)) +
-  stat_density(geom="line",position="identity")+ theme_minimal()+
-  ylab('Density')+
-  xlab(legend_label)+
-  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
-
-leg <- get_legend(p)
-my_legend <- as_ggplot(leg)
-ggsave('legend_density_plot.pdf', plot = leg, width = 6.5, height = 0.25)
 
 ```
 
@@ -145,12 +152,20 @@ legend_labels_continuous <- c(
   'Normalized EccDNA-Seq Signal'
 )
 
+axis_xlim_lowers <-c(
+  0,
+  0,
+  0,
+  0,
+  0
+)
+
 axis_xlim_uppers <-c(
-  4,
-  1000,
-  1000,
-  1000,
-  1000
+  2,
+  1500,
+  1500,
+  1500,
+  500
 )
 
 ```
@@ -163,6 +178,8 @@ for (i in seq(from=1,to=length(continuous_variables))){
   variable = continuous_variables[i]
     
   legend_label = legend_labels_continuous[i]
+  
+  axis_xlim_lower = axis_xlim_lowers[i]
   
   axis_xlim_upper = axis_xlim_uppers[i]
   
@@ -181,24 +198,31 @@ for (i in seq(from=1,to=length(continuous_variables))){
   plot_df <- data.frame(
     value = c(vector_shuffled_rice, vector_del_rice),
     group = c(rep('MoO Baseline',length(vector_shuffled_rice)),
-              rep('MoO Deletion',length(vector_del_rice)))
+              rep('MoO Indels',length(vector_del_rice)))
   )
   
-  p <- ggplot(data=plot_df, aes(x=value, color=group)) +
-      stat_density(geom="line",position="identity",adjust=5)+
-    ylab('Density')+
+  p <- ggplot(data=plot_df, aes(x=value, y=group, fill=group))+
+    geom_violin(lwd=0.25, scale="width", adjust=5) +
+    geom_boxplot(width = 0.15, outlier.shape = NA,lwd=0.25,coef=0)+
+          stat_summary(fun = "mean",
+               geom = "point",
+               color = "black",
+               size=0.5)+
     xlab(legend_label)+
-    xlim(0,axis_xlim_upper)+
-    scale_color_manual(values=c("#F8766D","#7CAE00"))+
+    ylab('')+
+    xlim(axis_xlim_lower,axis_xlim_upper)+
     theme_classic()+
-    theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-      theme(legend.position = "none")+
-    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
+    theme(plot.title = element_text(size=8,hjust = 0.5), 
+          axis.text=element_text(size=6),axis.title=element_text(size=8) , 
+          legend.title=element_text(size=8), legend.position = 'bottom', 
+          legend.text=element_text(size=6)) + theme(legend.title = 
+                                                      element_blank())+
+    theme(legend.position = "none")+
+    scale_fill_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste(variable, "_", 'density_plot',
-               '.pdf',sep = ''), plot = p, width = 6.5/2, height = 7.25/4)
+               '.pdf',sep = ''), plot = p, width = 6.5/2, height = 7.5/4)
 
 }
 
 ```
-

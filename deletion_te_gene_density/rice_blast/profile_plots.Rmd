@@ -58,8 +58,8 @@ regions_bed <- c(
 
 regions <- c(
   'All Deletions',
-  'Gene-containing Deletions',
-  'TE-containing Deletions',
+  'Gene-containing Indels',
+  'TE-containing Indels',
   'Random',
   'All Genes',
   'All TEs'

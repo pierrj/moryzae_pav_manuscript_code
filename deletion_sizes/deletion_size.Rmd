@@ -72,17 +72,26 @@ median(df_wheat$length)
 ```
 
 
-
 ```{r}
 
-# plot length densities
-p <- ggplot(data=plot_df, aes(x=length, color=host)) +
-    stat_density(geom="line",position="identity",adjust=5)+
-  ylab('Density')+
-  xlab('Deletion Lengths (kbp)')+
-  xlim(0,20) +
+p <- ggplot(data=plot_df, aes(x=length, y=host, fill=host))+
+  geom_violin(lwd=0.25, scale="width", adjust=5) + 
+  geom_boxplot(width = 0.15, outlier.shape = NA,lwd=0.25, coef=0)+
+    stat_summary(fun = "mean",
+             geom = "point",
+             color = "black",
+             size=0.5)+
+  xlab('Indel Lengths (kbp)')+
+  ylab('')+
+  xlim(0,15) +
   theme_classic()+
-  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'right', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+scale_color_manual(values=c("red", "blue"))
+  theme(plot.title = element_text(size=8,hjust = 0.5), 
+        axis.text=element_text(size=6),axis.title=element_text(size=8) , 
+        legend.title=element_text(size=8), legend.position = 'bottom', 
+        legend.text=element_text(size=6)) + theme(legend.title = 
+                                                    element_blank())+
+  theme(legend.position = "none")+
+  scale_fill_manual(values=c("red", "blue"))
 
 ggsave('deletion_lengths_density_plot.pdf', plot = p, width = 6.5/2, height = 4.5/2)
 

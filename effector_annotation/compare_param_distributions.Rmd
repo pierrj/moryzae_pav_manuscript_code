@@ -223,16 +223,24 @@ legend_labels_continuous <- c(
   'Gene GC Content',
   'Average Flanking GC Content (1kbp)',
   'Gene Length',
-  'Expression: Culture (TPM)',
+  'Expression: In Culture (TPM)',
   'Expression: In Planta (TPM)'
 )
 
+axis_xlim_lowers <-c(
+  0.25,
+  0.25,
+  0,
+  0,
+  0
+)
+
 axis_xlim_uppers <-c(
-  1,
-  1,
-  7500,
-  100,
-  100
+  0.75,
+  0.75,
+  5000,
+  50,
+  50
 )
 
 ```
@@ -246,6 +254,8 @@ for (i in seq(from=1,to=length(continuous_variables))){
   variable = continuous_variables[i]
     
   legend_label = legend_labels_continuous[i]
+  
+  axis_xlim_lower = axis_xlim_lowers[i]
   
   axis_xlim_upper = axis_xlim_uppers[i]
   
@@ -276,34 +286,32 @@ for (i in seq(from=1,to=length(continuous_variables))){
               rep('MoT (Conserved)',length(vector_variable_conserved_wheat)))
   )
   
-  ## plot density histograms
+  ## plot violin plots
   # set different xlim for all
-  p <- ggplot(data=plot_df, aes(x=value, color=group)) +
-      stat_density(geom="line",position="identity",adjust=5)+
-    ylab('Density')+
+  
+  p <- ggplot(data=plot_df, aes(x=value, y=group, fill=group))+
+    geom_violin(lwd=0.25, scale="width", adjust=5) + 
+    geom_boxplot(width = 0.15, outlier.shape = NA,lwd=0.25, coef=0)+
+      stat_summary(fun = "mean",
+               geom = "point",
+               color = "black",
+               size=0.5)+
     xlab(legend_label)+
-    xlim(0,axis_xlim_upper)+
+    ylab('')+
+    xlim(axis_xlim_lower,axis_xlim_upper)+
     theme_classic()+
-    theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-      theme(legend.position = "none")+
-    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
+    theme(plot.title = element_text(size=8,hjust = 0.5), 
+          axis.text=element_text(size=6),axis.title=element_text(size=8) , 
+          legend.title=element_text(size=8), legend.position = 'bottom', 
+          legend.text=element_text(size=6)) + theme(legend.title = 
+                                                      element_blank())+
+    theme(legend.position = "none")+
+    scale_fill_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste(variable, "_", 'density_plot',
-               '.pdf',sep = ''), plot = p, width = 6.5/3, height = 3.75/2)
+               '.pdf',sep = ''), plot = p, width = 6.5/2, height = 7.5/4)
 
 }
-
-# get single legend for all
-p <- ggplot(data=plot_df, aes(x=value, group=group, color=group)) +
-  stat_density(geom="line",position="identity")+ theme_minimal()+
-  ylab('Density')+
-  xlab(legend_label)+
-  theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=8), legend.position = 'bottom', legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
-
-leg <- get_legend(p)
-my_legend <- as_ggplot(leg)
-ggsave('legend_density_plot.pdf', plot = leg, width = 6.5, height = 0.25)
 
 ```
 ```{r}
@@ -343,6 +351,14 @@ legend_labels_continuous_no_wheat <- c(
 #   100
 # )
 
+axis_xlim_lowers_no_wheat <-c(
+  0,
+  0,
+  0,
+  0,
+  0
+)
+
 axis_xlim_uppers_no_wheat <-c(
   2,
   400,
@@ -361,6 +377,8 @@ for (i in seq(from=1,to=length(continuous_variables_no_wheat))){
   variable = continuous_variables_no_wheat[i]
     
   legend_label = legend_labels_continuous_no_wheat[i]
+  
+  axis_xlim_lower = axis_xlim_lowers_no_wheat[i]
   
   axis_xlim_upper = axis_xlim_uppers_no_wheat[i]
   
@@ -382,20 +400,27 @@ for (i in seq(from=1,to=length(continuous_variables_no_wheat))){
   conserved_median <- mean(plot_df$value[plot_df$group == "Rice Conserved"])
   pav_median <- mean(plot_df$value[plot_df$group == "Rice PAV"])
   
-  p <- ggplot(data=plot_df, aes(x=value, color=group)) +
-      stat_density(geom="line",position="identity",adjust=5)+
-    ylab('Density')+
+  p <- ggplot(data=plot_df, aes(x=value, y=group, fill=group))+
+    geom_violin(lwd=0.25, scale="width", adjust=5) + 
+    geom_boxplot(width = 0.15, outlier.shape = NA,lwd=0.25, coef=0)+
+      stat_summary(fun = "mean",
+               geom = "point",
+               color = "black",
+               size=0.5)+
     xlab(legend_label)+
-    xlim(0,axis_xlim_upper)+
+    ylab('')+
+    xlim(axis_xlim_lower,axis_xlim_upper)+
     theme_classic()+
-    # make sure the colors match
-    scale_color_manual(values=c("#F8766D","#7CAE00"),labels=c(conserved_median,pav_median))+
-    theme(plot.title = element_text(size=8,hjust = 0.5), axis.text=element_text(size=6),axis.title=element_text(size=8) , legend.title=element_text(size=6), legend.text=element_text(size=6)) + theme(legend.title = element_blank())+
-      theme(legend.position = 'none')+
-    scale_color_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
+    theme(plot.title = element_text(size=8,hjust = 0.5), 
+          axis.text=element_text(size=6),axis.title=element_text(size=8) , 
+          legend.title=element_text(size=8), legend.position = 'bottom', 
+          legend.text=element_text(size=6)) + theme(legend.title = 
+                                                      element_blank())+
+    theme(legend.position = "none")+
+    scale_fill_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste(variable, "_", 'density_plot',
-               '.pdf',sep = ''), plot = p, width = 6.5/3, height = 3.75/2)
+               '.pdf',sep = ''), plot = p, width = 6.5/2, height = 7.5/4)
 
 }
 

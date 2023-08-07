@@ -1,10 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=fasttree_scos
-#SBATCH --partition=savio3_bigmem
-#SBATCH --qos=savio_normal
+#SBATCH --partition=savio4_htc
+#SBATCH --qos=minium_htc4_normal
+#SBATCH --account=co_minium
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=20
-#SBATCH --time=48:00:00
+#SBATCH --ntasks-per-node=56
+#SBATCH --time=72:00:00
 #SBATCH --mail-user=pierrj@berkeley.edu
 #SBATCH --mail-type=ALL
 #SBATCH --output=/global/home/users/pierrj/slurm_stdout/slurm-%j.out
@@ -32,8 +33,8 @@
 #SOFTWARE.
 
 
-PROJECT_DIR=/global/scratch/users/pierrj/PAV_SV/PAV/wheat_blast_all
-DATE=Sep08
+PROJECT_DIR=/global/scratch/users/pierrj/PAV_SV/PAV/wheat_blast_anne_subset_re
+DATE=out
 
 cd $PROJECT_DIR
 
