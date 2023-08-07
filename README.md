@@ -16,7 +16,7 @@ All files used as inputs for `.Rmd` and `.ipynb` files are available on Zenodo u
 
 All directories and scripts are described below:
 
-- `at_content/` - calculate gc content for rice and wheat blast genes and flanking regions
+- `gc_content/` - calculate gc content for rice and wheat blast genes and flanking regions
     - `rice_blast/`
         - `gc_content_per_gene.slurm`
         - `generate_gc_table_per_genome.py`
@@ -154,6 +154,8 @@ All directories and scripts are described below:
         - `print_pav_for_validation.Rmd` - generate list of missing orthogroups from orthofinder for rice blast
     - `wheat_blast/`
         - `print_pav_for_validation.Rmd` - generate list of missing orthogroups from orthofinder for rice blast
+- `genome_stats/` - generate table of genome assembly stats
+    - `generate_assembly_stats_tables.slurm` - generate table of genome assembly stats
 - `genome_annotation/` - example code for genome annotation of rice and wheat blast genome
     - `run_fungap.slurm` - fungap command
     - `process_fungap_out.slurm` - run scripts to process gffs and protein fungap output files

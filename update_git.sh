@@ -34,12 +34,12 @@ RICE_BLAST_ANALYSIS_DIR=pav_project_local/pav_newest_gladieux_only_fungap
 CROSS_HOST_ANALYSIS_DIR=pav_project_local/cross_host_comparisons
 
 ## gc_content
-TARGET_DIR=at_content/rice_blast/
+TARGET_DIR=gc_content/rice_blast/
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp ${SLURM_SCRIPTS}/gc_content_per_gene.slurm $TARGET_DIR
 cp ${PYTHON_SCRIPTS}/generate_gc_table_per_genome.py $TARGET_DIR
 
-TARGET_DIR=at_content/wheat_blast/
+TARGET_DIR=gc_content/wheat_blast/
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp ${SLURM_SCRIPTS}/gc_content_per_gene_wheat_blast.slurm $TARGET_DIR
 cp ${PYTHON_SCRIPTS}/generate_gc_table_per_genome.py $TARGET_DIR
@@ -266,6 +266,11 @@ cp $RICE_BLAST_ANALYSIS_DIR/pipeline_methods/print_pav_for_validation.Rmd $TARGE
 TARGET_DIR=validate_missing_orthogroups/wheat_blast
 if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
 cp $WHEAT_BLAST_ANALYSIS_DIR/pipeline_methods/print_pav_for_validation.Rmd $TARGET_DIR
+
+## genome stats
+TARGET_DIR=genome_stats
+if [ -d $TARGET_DIR ]; then rm -r $TARGET_DIR; fi && mkdir -p $TARGET_DIR
+cp $SLURM_SCRIPTS/generate_assembly_stats_tables.slurm $TARGET_DIR
 
 ## fungap
 TARGET_DIR=genome_annotation
