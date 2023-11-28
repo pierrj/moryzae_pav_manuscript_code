@@ -97,3 +97,102 @@ ggsave('deletion_lengths_density_plot.pdf', plot = p, width = 6.5/2, height = 4.
 
 ```
 
+```{r}
+
+permutation_test = function(vector1, vector2, stat, replicates){
+    observed = stat(vector1) - stat(vector2)
+    combined = c(vector1, vector2)
+
+    null_dsn <- replicate(replicates,
+                          {
+                            sample_one_index <- sample(length(combined), length(vector1), replace = FALSE)
+                            sample_two_index <- seq(length(combined))[!seq(length(combined))%in%sample_one_index]
+
+                            sample_one <- combined[sample_one_index]
+                            sample_two <- combined[sample_two_index]
+                            stat(sample_one) - stat(sample_two)
+                          })
+
+    ## this is the two tailed p-value
+    p_value <- mean(abs(observed)<=abs(null_dsn))
+
+    if (p_value == 0){
+      return(paste("<", as.character(1/replicates), sep=''))
+    } else {
+      return(as.character(p_value))
+    }
+}
+
+twofive_quant = function(vector){
+  return(unname(quantile(vector, 0.25)))
+}
+
+sevenfive_quant = function(vector){
+  return(unname(quantile(vector,0.75)))
+}
+
+remove_outliers <- function(vector) {
+  Q1 <- quantile(vector, 0.25)
+  Q3 <- quantile(vector, 0.75)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  
+  vector <- vector[vector >= lower_bound & vector <= upper_bound]
+  return(vector)
+}
+
+```
+
+
+```{r}
+
+replicates <- 1000
+
+col_names <- c(
+  'rice_median',
+  'wheat_median',
+  'pvalue',
+  'rice_mean',
+  'wheat_mean',
+  'rice_twofive_quant',
+  'wheat_twofive_quant',
+  'rice_sevenfive_quant',
+  'wheat_sevenfive_quant'
+)
+
+df_stats <- data.frame(matrix(ncol = length(col_names), nrow = 0))
+
+colnames(df_stats) <- col_names
+
+df_subset = plot_df
+
+test_1 = df_subset$length[df_subset$host == "MoO"]
+test_2 = df_subset$length[df_subset$host == "MoT"]
+
+## need to deal with missing values here
+test_1 = na.omit(test_1)
+test_2 = na.omit(test_2)
+
+pvalue <- permutation_test(test_1, test_2, median, replicates)
+
+output <- c(
+        median(test_1), 
+        median(test_2), 
+        pvalue,
+        ## remove outliers to match violin plot
+        mean(remove_outliers(test_1)),
+        mean(remove_outliers(test_2)),
+        twofive_quant(test_1),
+        twofive_quant(test_2),
+        sevenfive_quant(test_1),
+        sevenfive_quant(test_2))
+
+df_stats[nrow(df_stats)+1,] <- output
+
+write.csv(df_stats, '../distances_param_stats/deletion_lengths_stats.csv', row.names=FALSE)
+
+
+
+```
+

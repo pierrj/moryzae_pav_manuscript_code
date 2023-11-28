@@ -402,3 +402,158 @@ close(output.file)
 
 
 ```
+
+
+```{r}
+## test to see results for B71 lineage
+
+b71_lineage_genomes <- c(
+'GCA001675595.1',
+'GCA001675605.1',
+'GCA001675615.1',
+'GCA905109085.1',
+'GCA905109095.1',
+'GCA905109105.1',
+'GCA905109115.1',
+'GCA905109125.1',
+'GCA905109245.1',
+'GCA905109485.1',
+'GCA905109745.1',
+'GCA905109755.1',
+'GCA905109785.1',
+'GCA905109815.1',
+'GCA905109825.1',
+'GCA905109845.1',
+'GCA905109915.1',
+'GCA905114805.1',
+'GCA905114815.1',
+'GCA905114825.1',
+'GCA905125175.1',
+'GCA905186785.1',
+'GCA905186795.1',
+'GCA004785725.2'
+)
+
+non_b71_lineage_genomes <- c(
+'GCA002218425.1',
+'GCA002218435.1',
+'GCA002218465.1',
+'GCA002924665.1',
+'GCA002924685.1',
+'GCA002924745.1',
+'GCA002925325.1',
+'GCA002925335.1',
+'GCA002925345.1',
+'GCA012490805.1',
+'GCA012490815.1',
+'GCA900474545.3'
+)
+
+lineage_info$lineage[lineage_info$isolate %in% b71_lineage_genomes] <- 71
+
+```
+
+
+
+```{r}
+
+lineages <- c(71)
+
+max_lost <- 2
+min_lost <- 2
+
+for (lineage in lineages) {
+  
+  df_lineage <- subset(df, select = colnames(df)[colnames(df) %in% lineage_info$isolate[lineage_info$lineage == lineage]])
+  
+  # conserved 
+  
+  conserved_ogs <- rownames(df_lineage)[
+    rowSums(df_lineage) > ncol(df_lineage) - min_lost # lost in at least min_lost genomes
+    ] # present in at least max_lost genomes
+  
+  # putative pav
+  putative_pav_ogs <- rownames(df_lineage)[
+    rowSums(df_lineage) <= ncol(df_lineage) - min_lost # lost in at least min_lost genomes
+    & rowSums(df_lineage) >= max_lost] # present in at least max_lost genomes
+  
+  # all (some OGs arent found in the lineage)
+  
+  all_ogs <- rownames(df_lineage)[
+    rowSums(df_lineage) != 0
+  ]
+  
+  #subset tree
+  lineage_tree <- keep.tip(tree, tree$tip.label[match(colnames(df_lineage), tree$tip.label)])
+  
+  # make edges and connections into df
+  tree_edge_df <- data.frame(tree$edge)
+  
+  actual_pav_ogs <- c()
+  
+  
+  for (og in putative_pav_ogs){
+    
+    # subset to just the orthogroup
+    list_ortho <- setNames(as.factor(df_lineage[og,]), colnames(df_lineage))
+    
+    
+    # make df of edges with known connections
+    edge_df <- data.frame(matrix(ncol = 2, nrow = Ntip(tree)))
+    
+    edge_df$X1 <- seq(1, Ntip(tree))
+    
+    edge_df$X2 <- as.character(list_ortho[tree$tip.label])
+    
+    # all edges and their characteristics
+    edges <- unique(tree_edge_df$X1)
+    
+    while (length(edges) != 0 ) { # if any edges are left
+      
+      working_edges <- c()
+      
+      for (edge in edges) {
+        if ( all(tree_edge_df$X2[tree_edge_df$X1 == edge] %in% edge_df$X1) ){ # if their connections have all already been processed
+          working_edges <- c(working_edges, edge) # then process them
+        }
+      }
+      
+      edges <- edges[! edges %in% working_edges]
+      
+      for (edge in working_edges) {
+        connected <- tree_edge_df$X2[tree_edge_df$X1 == edge]
+        values <- edge_df$X2[edge_df$X1 %in% connected]
+        if (length(unique(values)) == 1) {
+          edge_value <- as.character((values[[1]]))
+          edge_df <- edge_df[! edge_df$X1 %in% connected,] # remove edges from dataframe if another higher one is representative
+        } else {
+          edge_value <- 'not_resolved' ## if there is a conflict dont try to resolve it
+        }
+        edge_df[nrow(edge_df) + 1,] = list(edge, edge_value)
+      }
+    }
+    
+    edge_df <- edge_df[edge_df$X2 != 'not_resolved',]
+    
+    if (nrow(edge_df[edge_df$X2 == 0,]) >= min_lost & # absent in at least min_lost clades
+        nrow(edge_df[edge_df$X2 == 1,]) >= max_lost ) {# present in at least max_lost clades
+          actual_pav_ogs <- c(actual_pav_ogs,og)
+        } 
+    
+  }
+  
+  print(length(actual_pav_ogs))
+  
+  print(length(conserved_ogs))
+  
+  print(length(all_ogs))
+  
+  assign(paste("actual_pav_ogs_", lineage, sep = ""), actual_pav_ogs)
+  
+  assign(paste("conserved_ogs_", lineage, sep = ""), conserved_ogs)
+  
+  assign(paste("all_ogs_", lineage, sep = ""), all_ogs)
+  
+}
+
+```

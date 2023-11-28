@@ -269,6 +269,8 @@ for (i in seq(from=1, to=length(plot_columns_list))){
     ylab('')+
     theme(legend.position = "none")+
     theme( strip.background = element_blank())+
+    theme(axis.text=element_text(size=6), axis.title=element_text(size=8), 
+    legend.title=element_text(size=8), legend.text=element_text(size=6))+
     scale_fill_manual(values=c(cbbPalette[4], "#5f5f5f", cbbPalette[2], cbbPalette[3]))
   
   ggsave(paste("facetgrid_",

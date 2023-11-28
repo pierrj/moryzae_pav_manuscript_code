@@ -141,6 +141,15 @@ permutation_test = function(vector1, vector2, stat, replicates){
       return(as.character(p_value))
     }
 }
+
+twofive_quant = function(vector){
+  return(unname(quantile(vector, 0.25)))
+}
+
+sevenfive_quant = function(vector){
+  return(unname(quantile(vector,0.75)))
+}
+
 ```
 
 
@@ -165,7 +174,13 @@ col_names <- c(
   'orientation',
   'pav_median',
   'conserved_median',
-  'pvalue'
+  'pvalue',
+  'pav_mean',
+  'conserved_mean',
+  'pav_twofive_quant',
+  'conserved_twofive_quant',
+  'pav_sevenfive_quant',
+  'conserved_sevenfive_quant'
 )
 
 df_stats <- data.frame(matrix(ncol = length(col_names), nrow = 0))
@@ -208,7 +223,14 @@ for (host in c("rice", "wheat")){
     output <- c(host, element, orientation, 
                 median(test_1), 
                 median(test_2), 
-                pvalue)
+                pvalue,
+                mean(test_1),
+                mean(test_2),
+                twofive_quant(test_1),
+                twofive_quant(test_2),
+                sevenfive_quant(test_1),
+                sevenfive_quant(test_2))
+                
     
     df_stats[nrow(df_stats)+1,] <- output
   }
@@ -259,7 +281,13 @@ col_names <- c(
   'orientation',
   'rice_median',
   'wheat_median',
-  'pvalue'
+  'pvalue',
+  'rice_mean',
+  'wheat_mean',
+  'rice_twofive_quant',
+  'wheat_twofive_quant',
+  'rice_sevenfive_quant',
+  'wheat_sevenfive_quant'
 )
 
 df_stats <- data.frame(matrix(ncol = length(col_names), nrow = 0))
@@ -300,9 +328,15 @@ for (label in c("pav", "conserved")){
     pvalue <- permutation_test(test_1, test_2, median, replicates)
     
     output <- c(label, element, orientation, 
-                median(test_1), 
-                median(test_2), 
-                pvalue)
+            median(test_1), 
+            median(test_2), 
+            pvalue,
+            mean(test_1),
+            mean(test_2),
+            twofive_quant(test_1),
+            twofive_quant(test_2),
+            sevenfive_quant(test_1),
+            sevenfive_quant(test_2))
     
     df_stats[nrow(df_stats)+1,] <- output
   }

@@ -393,12 +393,12 @@ for (i in seq(from=1,to=length(continuous_variables_no_wheat))){
   
   plot_df <- data.frame(
     value = c(vector_variable_pav_rice, vector_variable_conserved_rice),
-    group = c(rep('Rice PAV',length(vector_variable_pav_rice)),
-              rep('Rice Conserved',length(vector_variable_conserved_rice)))
+    group = c(rep('MoO (PAV)',length(vector_variable_pav_rice)),
+              rep('MoO (Conserved)',length(vector_variable_conserved_rice)))
   )
   
-  conserved_median <- mean(plot_df$value[plot_df$group == "Rice Conserved"])
-  pav_median <- mean(plot_df$value[plot_df$group == "Rice PAV"])
+  conserved_median <- mean(plot_df$value[plot_df$group == "MoO (Conserved)"])
+  pav_median <- mean(plot_df$value[plot_df$group == "MoO (PAV)"])
   
   p <- ggplot(data=plot_df, aes(x=value, y=group, fill=group))+
     geom_violin(lwd=0.25, scale="width", adjust=5) + 

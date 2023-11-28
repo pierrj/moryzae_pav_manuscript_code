@@ -84,6 +84,62 @@ lineage_info <- lineage_info[match(tree$tip.label, lineage_info$isolate),]
 ```
 
 
+```{r}
+tree$tip.label
+```
+
+```{r}
+
+replacement_dict <- c(
+'GCA001675595.1' = 'BdJes16-1',
+'GCA001675605.1' = 'BdMeh16-1',
+'GCA001675615.1' = 'BdBar16-1',
+'GCA002218425.1' = 'Py22.1',
+'GCA002218435.1' = 'Py5020',
+'GCA002218465.1' = 'B2',
+'GCA002924665.1' = 'WHTQ',
+'GCA002924685.1' = 'WBKY11',
+'GCA002924745.1' = 'T25',
+'GCA002925325.1' = 'Br130',
+'GCA002925335.1' = 'Br7',
+'GCA002925345.1' = 'Br80',
+'GCA004785725.2' = 'B71',
+'GCA012490805.1' = 'PR01-37.V.3.07',
+'GCA012490815.1' = 'PR01-37.V.1.05',
+'GCA900474545.3' = 'BR32',
+'GCA905109085.1' = 'BTGP1_b',
+'GCA905109095.1' = 'BTJP4_12',
+'GCA905109105.1' = 'BTJP4_11',
+'GCA905109115.1' = 'BTBaB1',
+'GCA905109125.1' = 'BTBa_2',
+'GCA905109245.1' = 'BTJP4_16',
+'GCA905109485.1' = 'BTJP4_18',
+'GCA905109745.1' = 'BTJP4_6',
+'GCA905109755.1' = 'BTJP_4_2',
+'GCA905109785.1' = 'BTJP4_3',
+'GCA905109815.1' = 'BTMP_S13_1',
+'GCA905109825.1' = 'BTGP_6_g',
+'GCA905109845.1' = 'BTJP_4_15',
+'GCA905109915.1' = 'BTJP_4_9',
+'GCA905114805.1' = 'BTGP_6_e',
+'GCA905114815.1' = 'BTGP_6_f',
+'GCA905114825.1' = 'BTGP_6_h',
+'GCA905125175.1' = 'BTJP_4_1',
+'GCA905186785.1' = 'BTJP4_5',
+'GCA905186795.1' = 'BTMP_S_13_2'
+)
+
+
+```
+
+```{r}
+
+tree$tip.label <- unname(replacement_dict[match(tree$tip.label, names(replacement_dict))])
+
+```
+
+
+
 
 ```{r}
 
